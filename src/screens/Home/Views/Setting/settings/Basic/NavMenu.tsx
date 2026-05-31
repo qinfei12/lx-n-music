@@ -78,6 +78,7 @@ export default memo(() => {
   const theme = useTheme();
   const navStatus = useSettingValue('common.navStatus');
   const navOrder = useSettingValue('common.navOrder');
+  const picOpacity = useSettingValue('theme.picOpacity');
 
   const [localOrder, setLocalOrder] = useState<NAV_ID_Type[]>(() => {
     return navOrder || NAV_MENUS.map(m => m.id);
@@ -145,19 +146,24 @@ export default memo(() => {
             点击「↑↓」调整顺序，☐控制显示/隐藏
           </Text>
         </View>
-        <View style={[styles.menuList, { backgroundColor: theme['c-content-background'] }]}>
-          {menuList.map((item, idx) => (
-            <MenuItem
-              key={item.id}
-              item={item}
-              index={idx}
-              isChecked={navStatus[item.id] ?? true}
-              onToggle={handleToggle}
-              onMoveUp={handleMoveUp}
-              onMoveDown={handleMoveDown}
-              isLast={idx === menuList.length - 1}
-            />
-          ))}
+        <View style={{ 
+          overflow: 'hidden', borderRadius: 8, 
+          backgroundColor: 'transparent',
+        }}>
+          <View style={styles.menuList}>
+            {menuList.map((item, idx) => (
+              <MenuItem
+                key={item.id}
+                item={item}
+                index={idx}
+                isChecked={navStatus[item.id] ?? true}
+                onToggle={handleToggle}
+                onMoveUp={handleMoveUp}
+                onMoveDown={handleMoveDown}
+                isLast={idx === menuList.length - 1}
+              />
+            ))}
+          </View>
         </View>
       </View>
     </SubTitle>
@@ -177,7 +183,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   menuList: {
-    borderRadius: 8,
     overflow: 'hidden',
   },
   menuItem: {

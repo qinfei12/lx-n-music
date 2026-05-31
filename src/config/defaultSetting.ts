@@ -19,7 +19,7 @@ const defaultSetting: LX.AppSetting = {
   'common.alwaysKeepStatusbarHeight': false,
   'common.isShowStartupGreeting': true,
   'common.hideNavigationBar': false,
-  'common.isEnableWebDAVLog': true,
+  'common.isEnableWebDAVLog': false,
 
   'common.navStatus': {
     nav_songlist: true,

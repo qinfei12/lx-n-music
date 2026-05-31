@@ -185,6 +185,8 @@ const importBackupData = async (data: LX.ConfigFile.AllDataV3['data']) => {
   if (data.settings) updateSetting(filterSensitiveSettingsForSync(data.settings))
 
   if (data.userApis) await overwriteUserApis(data.userApis)
+  
+  toast('部分设置需要重启后生效')
 }
 
 const importPlayList = async (path: string) => {
