@@ -11,7 +11,9 @@ export {
 } from 'react-native-local-media-metadata'
 
 let cleared = false
-const picCachePath = privateStorageDirectoryPath + '/local-media-covers';
+export const picCachePath = privateStorageDirectoryPath + '/local-media-covers';
+
+export const getPicCachePath = () => picCachePath;
 
 export const scanAudioFiles = async (dirPath: string) => {
   const files = await readDir(dirPath)

@@ -13,10 +13,11 @@ import {
 } from './utils'
 import { getLocalFilePath } from '@/utils/music'
 import { readLyric, readPic } from '@/utils/localMediaMetadata'
-import { stat, existsFile, mkdir, writeFile } from '@/utils/fs'
+import { stat, existsFile, mkdir, writeFile, readDir } from '@/utils/fs'
 import settingState from '@/store/setting/state'
 import { btoa } from 'react-native-quick-base64'
 import playerState from '@/store/player/state'
+import appEvent from '@/event/appEvent'
 
 let webDAVModule: typeof import('@/core/webdavMusic/drive') | null = null
 let webDAVLog: {
@@ -276,51 +277,105 @@ export const getPicUrl = async ({
   
   if (!isRefresh && !skipFilePic) {
     if (isWebDAVMusic) {
-      // 验证原音频文件是否存在
+      const { picCachePath, readPic: extractPic } = await import('@/utils/localMediaMetadata')
+      
+      // 第1步：优先检查 local-media-covers 目录下是否有同名图片
+      const audioFileName = musicInfo.meta.fileName?.replace(/\.[^/.]+$/, '') || musicInfo.name
+      const coverExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+      let foundPicUrl = ''
+      
+      try {
+        const coverFiles = await readDir(picCachePath).catch(() => [])
+        for (const file of coverFiles) {
+          const fileName = file.name || ''
+          const ext = fileName.substring(fileName.lastIndexOf('.')).toLowerCase()
+          const baseName = fileName.substring(0, fileName.lastIndexOf('.'))
+          
+          if (coverExtensions.includes(ext) && baseName.includes(audioFileName)) {
+            foundPicUrl = `file://${picCachePath}/${fileName}`
+            webDAVLog?.info('getPicUrl: found cover in cache', { audioFileName, picUrl: foundPicUrl })
+            break
+          }
+        }
+      } catch (err) {
+        webDAVLog?.warn('getPicUrl: failed to read cover cache dir', { err })
+      }
+      
+      // 如果找到封面，直接返回
+      if (foundPicUrl) {
+        return foundPicUrl
+      }
+      
+      // 第2步：如果没有找到，检查默认下载路径下是否有 MP3 文件
+      const downloadDir = settingState.setting['download.path'] || '/storage/emulated/0/Music/LX-N Music'
       const audioFilePath = musicInfo.meta.filePath
+      let targetFilePath = audioFilePath
+      
+      // 如果音频文件路径不存在，尝试在下载目录查找
       if (audioFilePath) {
         const audioExists = await existsFile(audioFilePath).catch(() => false)
         if (!audioExists) {
-          webDAVLog?.warn('getPicUrl: audio file not found, clearing cached picUrl', { audioFilePath })
-          const module = await loadWebDAVModule()
-          void module.updateWebDAVMusicMeta(musicInfo.id, { picUrl: '' })
+          webDAVLog?.warn('getPicUrl: original audio file not found, trying download dir', { audioFilePath, downloadDir })
+          targetFilePath = `${downloadDir}/${musicInfo.meta.fileName}`
+        }
+      } else {
+        targetFilePath = `${downloadDir}/${musicInfo.meta.fileName}`
+      }
+      
+      // 第3步：检查目标文件是否存在，如果存在则提取封面
+      const targetExists = await existsFile(targetFilePath).catch(() => false)
+      if (targetExists) {
+        webDAVLog?.info('getPicUrl: found audio file, extracting cover', { targetFilePath })
+        try {
+          const pic = await extractPic(targetFilePath)
+          if (pic) {
+            const picUrl = pic.startsWith('/') ? `file://${pic}` : pic
+            webDAVLog?.info('getPicUrl: extracted cover from audio', { picUrl })
+            
+            // 保存封面路径到配置
+            const module = await loadWebDAVModule()
+            void module.updateWebDAVMusicMeta(musicInfo.id, { picUrl })
+            
+            // 触发全局事件通知列表页和详情页更新
+            appEvent.webdavPicUpdated(musicInfo.id, picUrl)
+            
+            return picUrl
+          }
+        } catch (err) {
+          webDAVLog?.warn('getPicUrl: failed to extract cover', { err })
+        }
+      } else {
+        webDAVLog?.warn('getPicUrl: audio file not found in download dir', { targetFilePath })
+      }
+      
+      // 第4步：尝试使用配置中的 picUrl
+      if (musicInfo.meta.picUrl) {
+        if (musicInfo.meta.picUrl.startsWith('file://')) {
+          const picFilePath = musicInfo.meta.picUrl.replace('file://', '')
+          const picExists = await existsFile(picFilePath).catch(() => false)
+          if (picExists) {
+            webDAVLog?.info('getPicUrl: using cached picUrl', { picUrl: musicInfo.meta.picUrl })
+            return musicInfo.meta.picUrl
+          }
+        } else {
+          webDAVLog?.info('getPicUrl: using online picUrl', { picUrl: musicInfo.meta.picUrl })
+          return musicInfo.meta.picUrl
         }
       }
       
-      if (musicInfo.meta.picUrl?.startsWith('file://')) {
-        const picFilePath = musicInfo.meta.picUrl.replace('file://', '')
-        const picExists = await existsFile(picFilePath).catch(() => false)
-        if (picExists) {
-          webDAVLog?.info('getPicUrl: RETURN - using cached local cover (verified)', { musicId: musicInfo.id, picUrl: musicInfo.meta.picUrl })
-          return musicInfo.meta.picUrl
-        } else {
-          webDAVLog?.warn('getPicUrl: cached cover file not found, will re-extract', { picFilePath })
-        }
-      }
+      // 第5步：都没有，返回空
+      webDAVLog?.info('getPicUrl: no cover found, return empty')
+      return ''
     }
 
+    // 非 WebDAV 音乐的封面获取逻辑保持不变
     let pic = await readPic(musicInfo.meta.filePath).catch(() => null)        
     if (pic) {
       if (pic.startsWith('/')) pic = `file://${pic}`
-      if (isWebDAVMusic) {
-        webDAVLog?.info('getPicUrl: RETURN - found local embedded cover', { pic })
-        const module = await loadWebDAVModule()
-        void module.updateWebDAVMusicMeta(musicInfo.id, { picUrl: pic })
-      }
       return pic
     }
 
-    if (musicInfo.meta.picUrl) {
-      if (musicInfo.meta.picUrl.startsWith('file://')) {
-        const picFilePath = musicInfo.meta.picUrl.replace('file://', '')
-        const picExists = await existsFile(picFilePath).catch(() => false)
-        if (picExists) {
-          return musicInfo.meta.picUrl
-        }
-      } else {
-        return musicInfo.meta.picUrl
-      }
-    }
+    if (musicInfo.meta.picUrl) return musicInfo.meta.picUrl
   }
 
   if (isWebDAVMusic) {

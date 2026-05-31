@@ -27,6 +27,7 @@ import {
   saveWebDAVSelectedFolder,
   scanWebDAVSongs,
 } from '@/core/webdavMusic/drive'
+import { getPicUrl } from '@/core/music'
 import settingState from '@/store/setting/state'
 import WebDAVListMenu, { type WebDAVListMenuType, type SelectInfo as WebDAVSelectInfo } from './WebDAVListMenu'
 import MetadataEditModal from '@/components/MetadataEditModal'
@@ -184,13 +185,43 @@ export default memo(() => {
     })
   }, [searchText, songs])
 
+  const syncSongsCover = useCallback(async (songList: LX.WebDAV.MusicInfo[]) => {
+    const updatedSongs = await Promise.all(
+      songList.map(async (song) => {
+        try {
+          const picUrl = await getPicUrl({
+            musicInfo: song,
+            isRefresh: false,
+            skipFilePic: false,
+          })
+          if (picUrl && picUrl !== song.meta.picUrl) {
+            return {
+              ...song,
+              meta: {
+                ...song.meta,
+                picUrl,
+              },
+            }
+          }
+        } catch (err) {
+          // ignore error
+        }
+        return song
+      })
+    )
+    setSongs(updatedSongs)
+  }, [])
+
   const loadConfig = useCallback(() => {
     void getWebDAVConfig().then(config => {
       setSelectedFolder(config.selectedFolder ?? null)
-      setSongs(config.songs ?? [])
+      const songs = config.songs ?? []
+      setSongs(songs)
       setScannedAt(config.scannedAt)
+      // 加载完成后立即同步封面
+      void syncSongsCover(songs)
     })
-  }, [])
+  }, [syncSongsCover])
 
   const showMenu = useCallback(
     (musicInfo: LX.WebDAV.MusicInfo, index: number, position: { x: number; y: number; w: number; h: number }) => {
@@ -210,7 +241,10 @@ export default memo(() => {
         void playList(LIST_IDS.TEMP, index).then(() => {
           void (async () => {
             const config = await getWebDAVConfig()
-            setSongs(config.songs ?? [])
+            const updatedSongs = config.songs ?? []
+            setSongs(updatedSongs)
+            // 播放后同步封面
+            void syncSongsCover(updatedSongs)
           })()
         })
       })
@@ -287,6 +321,22 @@ export default memo(() => {
     if (!hasConfig) return
     loadFolders(currentFolder)
   }, [hasConfig, currentFolder, loadFolders])
+
+  // 监听 WebDAV 封面更新事件
+  useEffect(() => {
+    const handleWebdavPicUpdated = (musicId: string, picUrl: string) => {
+      setSongs(prevSongs => prevSongs.map(song =>
+        song.id === musicId
+          ? { ...song, meta: { ...song.meta, picUrl } }
+          : song
+      ))
+    }
+    
+    global.app_event.on('webdavPicUpdated', handleWebdavPicUpdated)
+    return () => {
+      global.app_event.off('webdavPicUpdated', handleWebdavPicUpdated)
+    }
+  }, [])
 
   const handleScan = useCallback(() => {
     if (!hasConfig) {

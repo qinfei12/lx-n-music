@@ -130,6 +130,9 @@ export const normalizeWebDAVMusicInfo = (musicInfo: LX.WebDAV.MusicInfo) => {
     ...musicInfo,
     name: title.name,
     singer: title.singer,
+    meta: {
+      ...musicInfo.meta,
+    },
   }
 }
 
@@ -195,7 +198,7 @@ export const scanWebDAVSongs = async (
         ...newSong,
         meta: {
           ...newSong.meta,
-          picUrl: existingSong.meta.picUrl,
+          ...existingSong.meta,
         },
       }
     }

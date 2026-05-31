@@ -141,6 +141,11 @@ export class AppEvent extends Event {
     this.emit('picUpdated')
   }
 
+  // WebDAV 音乐封面更新事件
+  webdavPicUpdated(musicId: string, picUrl: string) {
+    this.emit('webdavPicUpdated', musicId, picUrl)
+  }
+
   // 更新歌词事件
   lyricUpdated() {
     this.emit('lyricUpdated')
