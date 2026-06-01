@@ -123,7 +123,7 @@ const PlayHistoryOverlay = () => {
 }
 
 const isMenuVisible = (id: NAV_ID_Type, navStatus: Partial<Record<NAV_ID_Type, boolean>>) => (
-  id !== 'nav_play_history' && (id === 'nav_search' || id === 'nav_setting' || (navStatus[id] ?? true))
+  id !== 'nav_play_history' && (id === 'nav_setting' || (navStatus[id] ?? true))
 )
 const LeaderboardPage = () => {
   const [visible, setVisible] = useState(commonState.navActiveId == 'nav_top')
@@ -500,6 +500,24 @@ const Main = () => {
       pagerViewRef.current?.setPageWithoutAnimation(index);
     }
   }, [viewMap, visibleNavs]);
+
+  // 当菜单显示状态改变时，检查当前活跃菜单是否仍可见
+  useEffect(() => {
+    const handleConfigUpdated = (keys: Array<keyof LX.AppSetting>) => {
+      if (keys.includes('common.navStatus')) {
+        // 检查当前活跃菜单是否可见
+        const isActiveVisible = isMenuVisible(commonState.navActiveId, navStatus);
+        if (!isActiveVisible && visibleNavs.length > 0) {
+          // 如果不可见，切换到第一个可见菜单
+          setNavActiveId(visibleNavs[0].id);
+        }
+      }
+    };
+    global.state_event.on('configUpdated', handleConfigUpdated);
+    return () => {
+      global.state_event.off('configUpdated', handleConfigUpdated);
+    };
+  }, [navStatus, visibleNavs]);
 
   useEffect(() => {
     const handleUpdate = (id: CommonState['navActiveId']) => {

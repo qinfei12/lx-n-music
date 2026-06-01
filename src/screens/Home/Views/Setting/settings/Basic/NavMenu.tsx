@@ -8,12 +8,11 @@ import { updateSetting } from '@/core/common';
 import { NAV_MENUS, NAV_ID_Type } from '@/config/constant';
 import { useTheme } from '@/store/theme/hook';
 
-const LOCKED_ITEMS: NAV_ID_Type[] = ['nav_search', 'nav_setting'];
+const CANNOT_CLOSE_ITEMS: NAV_ID_Type[] = ['nav_setting'];
 
 interface MenuItemData {
   id: NAV_ID_Type;
   name: string;
-  isLocked: boolean;
 }
 
 const MenuItem = memo(({
@@ -34,40 +33,38 @@ const MenuItem = memo(({
   isLast: boolean;
 }) => {
   const theme = useTheme();
+  const cannotClose = CANNOT_CLOSE_ITEMS.includes(item.id);
 
   return (
     <View style={styles.menuItem}>
       <View style={styles.menuInfo}>
         <Text style={[styles.menuName, { color: theme['c-font'] }]}>{item.name}</Text>
-        {item.isLocked ? (
-          <Text style={[styles.lockedText, { color: theme['c-font-label'] }]}>固定</Text>
-        ) : (
-          <View style={styles.controls}>
-            <Pressable
-              style={styles.moveBtn}
-              onPress={() => onMoveUp(index)}
-              disabled={index === 0}
-            >
-              <Text style={[styles.moveBtnText, { color: index === 0 ? theme['c-font-label'] : theme['c-font'] }]}>
-                ↑
-              </Text>
-            </Pressable>
-            <Pressable
-              style={styles.moveBtn}
-              onPress={() => onMoveDown(index)}
-              disabled={isLast}
-            >
-              <Text style={[styles.moveBtnText, { color: isLast ? theme['c-font-label'] : theme['c-font'] }]}>
-                ↓
-              </Text>
-            </Pressable>
-            <CheckBox
-              check={isChecked}
-              label=""
-              onChange={(check) => onToggle(item.id, check)}
-            />
-          </View>
-        )}
+        <View style={styles.controls}>
+          <Pressable
+            style={styles.moveBtn}
+            onPress={() => onMoveUp(index)}
+            disabled={index === 0}
+          >
+            <Text style={[styles.moveBtnText, { color: index === 0 ? theme['c-font-label'] : theme['c-font'] }]}>
+              ↑
+            </Text>
+          </Pressable>
+          <Pressable
+            style={styles.moveBtn}
+            onPress={() => onMoveDown(index)}
+            disabled={isLast}
+          >
+            <Text style={[styles.moveBtnText, { color: isLast ? theme['c-font-label'] : theme['c-font'] }]}>
+              ↓
+            </Text>
+          </Pressable>
+          <CheckBox
+            check={isChecked}
+            label=""
+            disabled={cannotClose}
+            onChange={(check) => onToggle(item.id, check)}
+          />
+        </View>
       </View>
     </View>
   );
@@ -92,8 +89,6 @@ export default memo(() => {
         return {
           id,
           name: t(id),
-          isLocked: LOCKED_ITEMS.includes(id),
-          index: idx,
         };
       });
   }, [localOrder, t]);
