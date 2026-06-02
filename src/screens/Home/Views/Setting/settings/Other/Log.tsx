@@ -6,7 +6,7 @@ import { getLogs, clearLogs } from '@/utils/log'
 import SubTitle from '../../components/SubTitle'
 import Button from '../../components/Button'
 import { createStyle, toast } from '@/utils/tools'
-import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
+import LogConfirmAlert, { type LogConfirmAlertType } from '@/components/common/LogConfirmAlert'
 import CheckBoxItem from '../../components/CheckBoxItem'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
@@ -15,7 +15,7 @@ import { updateSetting } from '@/core/common'
 
 export default memo(() => {
   const t = useI18n()
-  const alertRef = useRef<ConfirmAlertType>(null)
+  const alertRef = useRef<LogConfirmAlertType>(null)
   const [logText, setLogText] = useState('')
   const isUnmountedRef = useRef(true)
   const [isEnableSyncErrorLog, setIsEnableSyncErrorLog] = useState(global.lx.isEnableSyncLog)
@@ -107,7 +107,7 @@ export default memo(() => {
           <Button onPress={openLogModal}>{t('setting_other_log_btn_show')}</Button>
         </View>
       </SubTitle>
-      <ConfirmAlert
+      <LogConfirmAlert
         ref={alertRef}
         cancelText={t('setting_other_log_btn_hide')}
         confirmText={t('setting_other_log_btn_clean')}
@@ -118,17 +118,19 @@ export default memo(() => {
         onMiddle={handleCopyAll}
         showMiddle={!!logText}
       >
-        {logText ? (
-          <RNText 
-            selectable={true} 
-            style={{ fontSize: 13, lineHeight: 18 }}
-          >
-            {logText}
-          </RNText>
-        ) : (
-          <Text size={13}>{t('setting_other_log_tip_null')}</Text>
-        )}
-      </ConfirmAlert>
+        <View style={styles.renameContent} onStartShouldSetResponder={() => true}>
+          {logText ? (
+            <RNText 
+              selectable={true} 
+              style={{ fontSize: 13, lineHeight: 18 }}
+            >
+              {logText}
+            </RNText>
+          ) : (
+            <Text size={13}>{t('setting_other_log_tip_null')}</Text>
+          )}
+        </View>
+      </LogConfirmAlert>
     </>
   )
 })
@@ -141,5 +143,10 @@ const styles = createStyle({
   },
   btn: {
     flexDirection: 'row',
+  },
+  renameContent: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexDirection: 'column',
   },
 })

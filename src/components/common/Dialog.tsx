@@ -17,9 +17,9 @@ const styles = createStyle({
     alignItems: 'center',
   },
   modalView: {
-    maxWidth: '95%',
-    minWidth: '85%',
-    maxHeight: '85%',
+    maxWidth: '90%',
+    minWidth: '60%',
+    maxHeight: '78%',
     // backgroundColor: 'white',
     borderRadius: 4,
     // shadowColor: '#000',
@@ -116,6 +116,7 @@ export default forwardRef<DialogType, DialogProps>(
         <View style={{ ...styles.centeredView, paddingBottom: keyboardShown ? keyboardHeight : 0 }}>
           <View
             style={{ ...styles.modalView, height, backgroundColor: theme['c-content-background'] }}
+            onStartShouldSetResponder={() => true}
           >
             <View
               style={{ ...styles.header, backgroundColor: theme['c-primary-light-100-alpha-100'] }}

@@ -51,7 +51,7 @@ const styles = createStyle({
   },
 })
 
-export interface ConfirmAlertProps {
+export interface LogConfirmAlertProps {
   onCancel?: () => void
   onHide?: () => void
   onConfirm?: () => void
@@ -71,11 +71,11 @@ export interface ConfirmAlertProps {
   showMiddle?: boolean
 }
 
-export interface ConfirmAlertType {
+export interface LogConfirmAlertType {
   setVisible: (visible: boolean) => void
 }
 
-export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(
+export default forwardRef<LogConfirmAlertType, LogConfirmAlertProps>(
   (
     {
       onHide,
@@ -95,7 +95,7 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(
       middleText = '',
       onMiddle = () => {},
       showMiddle = false,
-    }: ConfirmAlertProps,
+    }: LogConfirmAlertProps,
     ref
   ) => {
     const theme = useTheme()
@@ -124,7 +124,10 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(
         ref={dialogRef}
       >
         <View style={styles.main}>
-          <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'}>
+          <ScrollView 
+            style={styles.content}
+            keyboardShouldPersistTaps={'always'}
+          >
             {children ?? <Text>{text}</Text>}
           </ScrollView>
         </View>
