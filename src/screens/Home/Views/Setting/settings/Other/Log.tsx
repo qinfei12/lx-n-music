@@ -1,5 +1,5 @@
 import { memo, useRef, useState, useEffect } from 'react'
-import { View, Clipboard } from 'react-native'
+import { View, Clipboard, Text as RNText } from 'react-native'
 import { getLogs, clearLogs } from '@/utils/log'
 // import { gzip, ungzip } from 'pako'
 
@@ -41,7 +41,11 @@ export default memo(() => {
       const logArr = log.split(/^----lx log----\n|\n----lx log----\n|\n----lx log----$/)
       // console.log(logArr)
       logArr.reverse()
-      setLogText(logArr.join('\n\n').replace(/^\n+|\n+$/, ''))
+      const formattedLog = logArr
+        .filter(line => line.trim())
+        .join('\n\n')
+        .replace(/^\n+|\n+$/, '')
+      setLogText(formattedLog)
     })
   }
 
@@ -114,15 +118,16 @@ export default memo(() => {
         onMiddle={handleCopyAll}
         showMiddle={!!logText}
       >
-        <View>
-          {logText ? (
-            <Text selectable size={13}>
-              {logText}
-            </Text>
-          ) : (
-            <Text size={13}>{t('setting_other_log_tip_null')}</Text>
-          )}
-        </View>
+        {logText ? (
+          <RNText 
+            selectable={true} 
+            style={{ fontSize: 13, lineHeight: 18 }}
+          >
+            {logText}
+          </RNText>
+        ) : (
+          <Text size={13}>{t('setting_other_log_tip_null')}</Text>
+        )}
       </ConfirmAlert>
     </>
   )

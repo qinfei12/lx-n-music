@@ -3,7 +3,8 @@ import {
   // getOtherSource as getOtherSourceFromStore,
   // saveOtherSource as saveOtherSourceFromStore,
   getMusicUrl as getStoreMusicUrl,
-  getPlayerLyric as getStoreLyric,
+  getPlayerLyric,
+  getLyric as getStoreLyric,
 } from '@/utils/data'
 import { langS2T, toNewMusicInfo, toOldMusicInfo } from '@/utils'
 import { assertApiSupport } from '@/utils/tools'
@@ -21,20 +22,60 @@ const otherSourceCache = new Map<
   LX.Music.MusicInfoOnline[]
 >()
 
+const cleanFileName = (name: string): string => {
+  if (!name) return name
+  let cleaned = name
+    .replace(/\s*\(cover\)\s*/gi, ' ')
+    .replace(/\s*\(MP3_\d+K\)\s*/gi, ' ')
+    .replace(/\s*\(\d+K\)\s*/gi, ' ')
+    .replace(/\s*\(HQ\)\s*/gi, ' ')
+    .replace(/\s*\(SQ\)\s*/gi, ' ')
+    .replace(/\s*\(无损\)\s*/gi, ' ')
+    .replace(/\s*\(高清\)\s*/gi, ' ')
+    .replace(/\s*\(原版\)\s*/gi, ' ')
+    .replace(/\s*\(纯人声\)\s*/gi, ' ')
+    .replace(/\s*\(伴奏\)\s*/gi, ' ')
+    .replace(/\s*\(instrumental\)\s*/gi, ' ')
+    .replace(/\s*\(live\)\s*/gi, ' ')
+    .replace(/\s*\(remix\)\s*/gi, ' ')
+    .replace(/\s*\(edit\)\s*/gi, ' ')
+    .replace(/\s*\(radio\)\s*/gi, ' ')
+    .replace(/\s*-\s*Remastered\s*/gi, ' ')
+    .replace(/\s*-\s*Remix\s*/gi, ' ')
+    .replace(/\s*-\s*Live\s*/gi, ' ')
+    .replace(/\s*-\s*Acoustic\s*/gi, ' ')
+    .replace(/\s+\d{4}\s*/g, ' ')
+    .replace(/\s*\[\d+\]\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned || name
+}
+
 export const getOtherSource = async (
   musicInfo: LX.Music.MusicInfo | LX.Download.ListItem,
   isRefresh = false
 ): Promise<LX.Music.MusicInfoOnline[]> => {
-  const name = 'progress' in musicInfo ? musicInfo.metadata.musicInfo.name : musicInfo.name
-  const singer = 'progress' in musicInfo ? musicInfo.metadata.musicInfo.singer : musicInfo.singer
+  const originalName = 'progress' in musicInfo ? musicInfo.metadata.musicInfo.name : musicInfo.name
+  const originalSinger = 'progress' in musicInfo ? musicInfo.metadata.musicInfo.singer : musicInfo.singer
+  
+  const cleanedName = cleanFileName(originalName)
+  const cleanedSinger = cleanFileName(originalSinger)
+  
+  log.info(`[在线匹配源] ========== 开始搜索 ==========`)
+  log.info(`[在线匹配源] 原始歌曲名: "${originalName}"`)
+  log.info(`[在线匹配源] 原始歌手名: "${originalSinger}"`)
+  log.info(`[在线匹配源] 清理后歌曲名: "${cleanedName}"`)
+  log.info(`[在线匹配源] 清理后歌手名: "${cleanedSinger}"`)
   
   // if (!isRefresh) {
   //   const cachedInfo = await getOtherSourceFromStore(musicInfo.id)
   //   if (cachedInfo.length) return cachedInfo
   // }
   if (otherSourceCache.has(musicInfo)) {
-    log.info(`[在线匹配源] 命中缓存 - 歌曲: ${name} - 歌手: ${singer}`)
-    return otherSourceCache.get(musicInfo)!
+    log.info(`[在线匹配源] 命中缓存 - 直接返回缓存结果`)
+    const cachedResult = otherSourceCache.get(musicInfo)!
+    log.info(`[在线匹配源] 缓存结果数量: ${cachedResult.length}`)
+    return cachedResult
   }
   let key: string
   let searchMusicInfo: {
@@ -47,8 +88,8 @@ export const getOtherSource = async (
   if ('progress' in musicInfo) {
     key = `local_${musicInfo.id}`
     searchMusicInfo = {
-      name: musicInfo.metadata.musicInfo.name,
-      singer: musicInfo.metadata.musicInfo.singer,
+      name: cleanedName,
+      singer: cleanedSinger,
       source: musicInfo.metadata.musicInfo.source,
       albumName: musicInfo.metadata.musicInfo.meta.albumName,
       interval: musicInfo.metadata.musicInfo.interval ?? '',
@@ -56,36 +97,59 @@ export const getOtherSource = async (
   } else {
     key = `${musicInfo.source}_${musicInfo.id}`
     searchMusicInfo = {
-      name: musicInfo.name,
-      singer: musicInfo.singer,
+      name: cleanedName,
+      singer: cleanedSinger,
       source: musicInfo.source,
       albumName: musicInfo.meta.albumName,
       interval: musicInfo.interval ?? '',
     }
   }
+  log.info(`[在线匹配源] 搜索key: "${key}"`)
+  log.info(`[在线匹配源] 搜索参数:`, JSON.stringify(searchMusicInfo, null, 2))
+  
   if (getOtherSourcePromises.has(key)) {
-    log.info(`[在线匹配源] 已有查询中 - 歌曲: ${name} - 歌手: ${singer}`)
+    log.info(`[在线匹配源] 已有相同查询在进行中，等待结果`)
     return getOtherSourcePromises.get(key)
   }
 
-  log.info(`[在线匹配源] 开始搜索 - 歌曲: ${name} - 歌手: ${singer}`)
+  log.info(`[在线匹配源] 开始调用 findMusic 进行搜索`)
 
   const promise = new Promise<LX.Music.MusicInfoOnline[]>((resolve, reject) => {
     let timeout: null | number = BackgroundTimer.setTimeout(() => {
       timeout = null
-      log.error(`[在线匹配源] 搜索超时 - 歌曲: ${name} - 歌手: ${singer}`)
+      log.error(`[在线匹配源] 搜索超时 (12秒)`)
+      log.error(`[在线匹配源] 超时详情 - 歌曲: ${originalName} - 歌手: ${originalSinger}`)
       reject(new Error('find music timeout'))
     }, 12_000)
     findMusic(searchMusicInfo)
       .then((otherSource) => {
-        if (otherSourceCache.size > 10) otherSourceCache.clear()
+        log.info(`[在线匹配源] findMusic 返回结果，原始数量: ${otherSource.length}`)
+        
+        if (otherSourceCache.size > 10) {
+          log.info(`[在线匹配源] 缓存数量超过10，清空缓存`)
+          otherSourceCache.clear()
+        }
+        
         const source = otherSource.map(toNewMusicInfo) as LX.Music.MusicInfoOnline[]
         otherSourceCache.set(musicInfo, source)
-        log.info(`[在线匹配源] 搜索完成 - 歌曲: ${name} - 歌手: ${singer} - 找到结果: ${source.length} 个`)
+        
+        log.info(`[在线匹配源] 搜索完成 ==========`)
+        log.info(`[在线匹配源] 最终找到结果: ${source.length} 个`)
+        
+        if (source.length > 0) {
+          log.info(`[在线匹配源] 搜索结果详情:`)
+          source.forEach((item, index) => {
+            log.info(`[在线匹配源]   ${index + 1}. ${item.source} - "${item.name}" - "${item.singer}"`)
+          })
+        }
+        
         resolve(source)
       })
       .catch((err) => {
-        log.error(`[在线匹配源] 搜索失败 - 歌曲: ${name} - 歌手: ${singer} - 错误: ${err?.message || err}`)
+        log.error(`[在线匹配源] 搜索失败 ==========`)
+        log.error(`[在线匹配源] 失败详情 - 歌曲: ${originalName} - 歌手: ${originalSinger}`)
+        log.error(`[在线匹配源] 错误信息: ${err?.message || err}`)
+        log.error(`[在线匹配源] 错误堆栈: ${err?.stack || '无'}`)
         reject(err)
       })
       .finally(() => {
@@ -97,7 +161,10 @@ export const getOtherSource = async (
       return otherSource
     })
     .finally(() => {
-      if (getOtherSourcePromises.has(key)) getOtherSourcePromises.delete(key)
+      if (getOtherSourcePromises.has(key)) {
+        getOtherSourcePromises.delete(key)
+        log.info(`[在线匹配源] 移除查询promise, key: "${key}"`)
+      }
     })
   getOtherSourcePromises.set(key, promise)
   return promise
@@ -158,6 +225,13 @@ export const buildLyricInfo = async (
 export const getCachedLyricInfo = async (
   musicInfo: LX.Music.MusicInfo
 ): Promise<LX.Player.LyricInfo | null> => {
+  // 优先检查编辑过的歌词
+  const playerLyricInfo = await getPlayerLyric(musicInfo)
+  if (playerLyricInfo?.lyric && playerLyricInfo.rawlrcInfo?.lyric !== playerLyricInfo.lyric) {
+    // 如果编辑过的歌词和原始歌词不同，说明是用户编辑过的，优先使用
+    return playerLyricInfo
+  }
+  
   let lrcInfo = await getStoreLyric(musicInfo)
   // lrcInfo = {}
   if (existTimeExp.test(lrcInfo.lyric) && lrcInfo.tlyric != null) {
@@ -225,28 +299,50 @@ export const getOnlineOtherSourceLyricByLocal = async (
     throw new Error('source init failed')
   }
 
+  log.info(`[在线匹配歌词] ========== 开始匹配 ==========`)
+  log.info(`[在线匹配歌词] 原始信息 - 歌曲: "${musicInfo.name}" - 歌手: "${musicInfo.singer}"`)
+  log.info(`[在线匹配歌词] 音乐ID: "${musicInfo.id}"`)
+  log.info(`[在线匹配歌词] 来源: "${musicInfo.source}"`)
+  log.info(`[在线匹配歌词] 是否刷新: ${isRefresh}`)
+
   const lyricInfo = await getCachedLyricInfo(musicInfo)
   if (lyricInfo && !isRefresh) {
-    log.info(`[在线匹配歌词] 命中缓存 - 歌曲: ${musicInfo.name} - 歌手: ${musicInfo.singer}`)
+    log.info(`[在线匹配歌词] 命中缓存，直接返回`)
+    log.info(`[在线匹配歌词] 缓存歌词长度: ${lyricInfo.lyric?.length || 0}`)
     return { lyricInfo, isFromCache: true }
   }
 
-  log.info(`[在线匹配歌词] 开始匹配 - 歌曲: ${musicInfo.name} - 歌手: ${musicInfo.singer}`)
+  const cleanedName = cleanFileName(musicInfo.name)
+  const cleanedSinger = cleanFileName(musicInfo.singer)
+  log.info(`[在线匹配歌词] 清理后歌曲名: "${cleanedName}"`)
+  log.info(`[在线匹配歌词] 清理后歌手名: "${cleanedSinger}"`)
+
+  const oldMusicInfo = toOldMusicInfo({
+    ...musicInfo,
+    name: cleanedName,
+    singer: cleanedSinger,
+  })
+  log.info(`[在线匹配歌词] 转换后的搜索参数:`, JSON.stringify(oldMusicInfo, null, 2))
   
   let reqPromise
   try {
-    reqPromise = apis('local').getLyric(toOldMusicInfo(musicInfo)).promise
+    log.info(`[在线匹配歌词] 调用 apis('local').getLyric()`)
+    reqPromise = apis('local').getLyric(oldMusicInfo).promise
   } catch (err: any) {
-    log.error(`[在线匹配歌词] API 调用失败 - 歌曲: ${musicInfo.name} - 错误: ${err?.message || err}`)
+    log.error(`[在线匹配歌词] API 调用失败 - 错误: ${err?.message || err}`)
     reqPromise = Promise.reject(err)
   }
 
   return reqPromise.then((lyricInfo: LX.Music.LyricInfo) => {
     const hasLyric = lyricInfo?.lyric?.length > 0
-    log.info(`[在线匹配歌词] 匹配完成 - 歌曲: ${musicInfo.name} - 是否成功: ${hasLyric} - 歌词长度: ${lyricInfo?.lyric?.length || 0}`)
+    log.info(`[在线匹配歌词] 匹配完成 ==========`)
+    log.info(`[在线匹配歌词] 是否成功: ${hasLyric}`)
+    log.info(`[在线匹配歌词] 歌词长度: ${lyricInfo?.lyric?.length || 0}`)
+    log.info(`[在线匹配歌词] 歌词预览: ${lyricInfo?.lyric?.substring(0, 100) || ''}...`)
     return { lyricInfo, isFromCache: false }
   }).catch((err) => {
-    log.error(`[在线匹配歌词] 匹配失败 - 歌曲: ${musicInfo.name} - 错误: ${err?.message || err}`)
+    log.error(`[在线匹配歌词] 匹配失败 ==========`)
+    log.error(`[在线匹配歌词] 错误信息: ${err?.message || err}`)
     throw err
   })
 }
@@ -261,13 +357,29 @@ export const getOnlineOtherSourcePicByLocal = async (
     throw new Error('source init failed')
   }
 
-  log.info(`[在线匹配封面] 开始匹配 - 歌曲: ${musicInfo.name} - 歌手: ${musicInfo.singer}`)
+  log.info(`[在线匹配封面] ========== 开始匹配 ==========`)
+  log.info(`[在线匹配封面] 原始信息 - 歌曲: "${musicInfo.name}" - 歌手: "${musicInfo.singer}"`)
+  log.info(`[在线匹配封面] 音乐ID: "${musicInfo.id}"`)
+  log.info(`[在线匹配封面] 来源: "${musicInfo.source}"`)
+
+  const cleanedName = cleanFileName(musicInfo.name)
+  const cleanedSinger = cleanFileName(musicInfo.singer)
+  log.info(`[在线匹配封面] 清理后歌曲名: "${cleanedName}"`)
+  log.info(`[在线匹配封面] 清理后歌手名: "${cleanedSinger}"`)
+
+  const oldMusicInfo = toOldMusicInfo({
+    ...musicInfo,
+    name: cleanedName,
+    singer: cleanedSinger,
+  })
+  log.info(`[在线匹配封面] 转换后的搜索参数:`, JSON.stringify(oldMusicInfo, null, 2))
 
   let reqPromise
   try {
-    reqPromise = apis('local').getPic(toOldMusicInfo(musicInfo)).promise
+    log.info(`[在线匹配封面] 调用 apis('local').getPic()`)
+    reqPromise = apis('local').getPic(oldMusicInfo).promise
   } catch (err: any) {
-    log.error(`[在线匹配封面] API 调用失败 - 歌曲: ${musicInfo.name} - 错误: ${err?.message || err}`)
+    log.error(`[在线匹配封面] API 调用失败 - 错误: ${err?.message || err}`)
     reqPromise = Promise.reject(err)
   }
 

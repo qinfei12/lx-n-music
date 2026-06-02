@@ -1,4 +1,4 @@
-import { saveLyric, saveMusicUrl } from '@/utils/data'
+import { saveLyric, saveMusicUrl, getPlayerLyric } from '@/utils/data'
 import { updateListMusics } from '@/core/list'
 import {
   buildLyricInfo,
@@ -505,6 +505,14 @@ export const getLyricInfo = async ({
   if (!isRefresh && !skipFileLyric) {
     // WebDAV 音乐特殊处理
     if (isWebDAVMusic) {
+      // 第0步：优先检查编辑过的歌词
+      const playerLyricInfo = await getPlayerLyric(musicInfo)
+      if (playerLyricInfo?.lyric && playerLyricInfo.rawlrcInfo?.lyric !== playerLyricInfo.lyric) {
+        // 如果编辑过的歌词和原始歌词不同，说明是用户编辑过的，优先使用
+        webDAVLog?.info('getLyricInfo: WebDAV music using edited lyric', { musicId: musicInfo.id })
+        return buildLyricInfo(playerLyricInfo)
+      }
+      
       // 第1步：检查缓存歌词
       const lyricInfo = await getCachedLyricInfo(musicInfo)
       if (lyricInfo?.lyric) {
@@ -572,7 +580,14 @@ export const getLyricInfo = async ({
       })
     }
 
-    // 非 WebDAV 音乐的歌词获取逻辑保持不变
+    // 非 WebDAV 音乐的歌词获取逻辑
+    // 第0步：优先检查编辑过的歌词
+    const playerLyricInfo = await getPlayerLyric(musicInfo)
+    if (playerLyricInfo?.lyric && playerLyricInfo.rawlrcInfo?.lyric !== playerLyricInfo.lyric) {
+      // 如果编辑过的歌词和原始歌词不同，说明是用户编辑过的，优先使用
+      return buildLyricInfo(playerLyricInfo)
+    }
+    
     const rawlrcInfo = await getMusicFileLyric(musicInfo.meta.filePath)
     if (rawlrcInfo) return buildLyricInfo(rawlrcInfo)
 

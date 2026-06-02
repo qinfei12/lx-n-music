@@ -16,11 +16,12 @@ import MetadataForm, { defaultData, type Metadata, type MetadataFormType } from 
 import { log } from '@/utils/log'
 import { formatPlayTime2 } from '@/utils'
 import { unlink, rename } from '@/utils/fs'
+import { saveEditedLyric } from '@/utils/data'
 
 export type { Metadata }
 
 export interface MetadataEditType {
-  show: (filePath: string) => void
+  show: (filePath: string, musicInfo?: LX.Music.MusicInfo) => void
 }
 export interface MetadataEditProps {
   onUpdate: (info: Metadata) => void
@@ -34,8 +35,10 @@ export default forwardRef<MetadataEditType, MetadataEditProps>((props, ref) => {
   const [visible, setVisible] = useState(false)
   const [processing, setProcessing] = useState(false)
   const isUnmounted = useUnmounted()
+  const musicInfoRef = useRef<LX.Music.MusicInfo | null>(null)
 
-  const handleShow = (filePath: string) => {
+  const handleShow = (filePath: string, musicInfo?: LX.Music.MusicInfo) => {
+    musicInfoRef.current = musicInfo || null
     alertRef.current?.setVisible(true)
     void Promise.all([
       readMetadata(filePath),
@@ -58,13 +61,13 @@ export default forwardRef<MetadataEditType, MetadataEditProps>((props, ref) => {
     })
   }
   useImperativeHandle(ref, () => ({
-    show(path) {
+    show(path, musicInfo) {
       filePath.current = path
-      if (visible) handleShow(path)
+      if (visible) handleShow(path, musicInfo)
       else {
         setVisible(true)
         requestAnimationFrame(() => {
-          handleShow(path)
+          handleShow(path, musicInfo)
         })
       }
     },
@@ -108,6 +111,15 @@ export default forwardRef<MetadataEditType, MetadataEditProps>((props, ref) => {
       if (_metadata.lyric != metadata.current.lyric) {
         isUpdated ||= true
         await writeLyric(filePath.current, _metadata.lyric)
+        // 同时保存到缓存，这样播放器下次使用时就能读取到编辑过的歌词
+        // 如果有传入完整的 musicInfo，使用它的 id（特别是 WebDAV 音乐）
+        const lyricMusicInfo: any = musicInfoRef.current || {
+          id: filePath.current,
+          name: _metadata.name,
+          singer: _metadata.singer,
+          source: 'local',
+        }
+        void saveEditedLyric(lyricMusicInfo, { lyric: _metadata.lyric, tlyric: '', rlyric: '', lxlyric: '' })
       }
     } catch (err: any) {
       log.error(`save (${filePath.current}) metadata failed: \n${err.message}`)

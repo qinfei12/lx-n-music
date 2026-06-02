@@ -1,5 +1,5 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { View, ScrollView } from 'react-native'
+import { forwardRef, useImperativeHandle, useRef, useState, useCallback } from 'react'
+import { View, ScrollView, PanResponder, Animated } from 'react-native'
 import Dialog, { type DialogType } from './Dialog'
 import Button from './Button'
 import { createStyle } from '@/utils/tools'
@@ -9,23 +9,43 @@ import Text from './Text'
 
 const styles = createStyle({
   main: {
-    // flexGrow: 0,
-    flexShrink: 1,
+    flex: 1,
     marginTop: 15,
     marginLeft: 5,
     marginRight: 5,
     marginBottom: 25,
+    flexDirection: 'row',
   },
   content: {
-    flexGrow: 0,
+    flex: 1,
+  },
+  contentContainer: {
     paddingLeft: 10,
-    paddingRight: 10,
+    paddingRight: 12,
+  },
+  scrollBarContainer: {
+    width: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  scrollBarTrack: {
+    width: 16,
+    flex: 1,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  scrollBarThumb: {
+    width: 16,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    position: 'absolute',
   },
   btns: {
     flexDirection: 'row',
     justifyContent: 'center',
     paddingBottom: 15,
-    // paddingRight: 15,
   },
   btnsDirection: {
     paddingLeft: 15,
@@ -102,10 +122,40 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(
     const t = useI18n()
 
     const dialogRef = useRef<DialogType>(null)
+    const scrollViewRef = useRef<ScrollView>(null)
+    const scrollBarTrackRef = useRef<View>(null)
+    
+    const [trackHeight, setTrackHeight] = useState(0)
+    const [contentHeight, setContentHeight] = useState(0)
+    const [containerHeight, setContainerHeight] = useState(0)
+    const [thumbPosition, setThumbPosition] = useState(new Animated.Value(0))
+    const startYRef = useRef(0)
+    const startPositionRef = useRef(0)
+
+    const calculateTrackRatio = useCallback(() => {
+      const scrollableHeight = Math.max(0, contentHeight - containerHeight)
+      if (scrollableHeight <= 0) return 0
+      const availableTrackHeight = trackHeight - Math.max(40, Math.min(trackHeight * 0.3, trackHeight))
+      return availableTrackHeight / scrollableHeight
+    }, [contentHeight, containerHeight, trackHeight])
+
+    const calculateThumbHeight = useCallback(() => {
+      return Math.max(40, Math.min(trackHeight * 0.3, trackHeight))
+    }, [trackHeight])
+
+    const calculateMaxThumbPosition = useCallback(() => {
+      return trackHeight - calculateThumbHeight()
+    }, [trackHeight, calculateThumbHeight])
 
     useImperativeHandle(ref, () => ({
       setVisible(visible: boolean) {
         dialogRef.current?.setVisible(visible)
+        if (visible) {
+          setTimeout(() => {
+            thumbPosition.setValue(0)
+            scrollViewRef.current?.scrollTo({ y: 0, animated: false })
+          }, 100)
+        }
       },
     }))
 
@@ -113,6 +163,47 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(
       onCancel?.()
       dialogRef.current?.setVisible(false)
     }
+
+    const onScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      const scrollY = event.nativeEvent.contentOffset.y
+      const ratio = calculateTrackRatio()
+      if (ratio > 0) {
+        const targetPosition = scrollY * ratio
+        thumbPosition.setValue(targetPosition)
+      }
+    }, [calculateTrackRatio, thumbPosition])
+
+    const onContentSizeChange = useCallback((_width: number, height: number) => {
+      setContentHeight(height)
+    }, [])
+
+    const onContainerLayout = useCallback((event: { nativeEvent: { layout: { height: number } } }) => {
+      setContainerHeight(event.nativeEvent.layout.height)
+    }, [])
+
+    const onTrackLayout = useCallback((event: { nativeEvent: { layout: { height: number } } }) => {
+      setTrackHeight(event.nativeEvent.layout.height)
+    }, [])
+
+    const panResponder = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: (_, gestureState) => {
+        startYRef.current = gestureState.y0
+        startPositionRef.current = thumbPosition._value
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const deltaY = gestureState.dy
+        const newPosition = Math.max(0, Math.min(startPositionRef.current + deltaY, calculateMaxThumbPosition()))
+        thumbPosition.setValue(newPosition)
+        const ratio = calculateTrackRatio()
+        if (ratio > 0) {
+          const scrollY = newPosition / ratio
+          scrollViewRef.current?.scrollTo({ y: scrollY, animated: false })
+        }
+      },
+      onPanResponderRelease: () => {},
+      onPanResponderTerminate: () => {},
+    })
 
     return (
       <Dialog
@@ -122,11 +213,43 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(
         closeBtn={closeBtn}
         title={title}
         ref={dialogRef}
+        height="85%"
       >
         <View style={styles.main}>
-          <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'}>
-            {children ?? <Text>{text}</Text>}
-          </ScrollView>
+          <View style={styles.content} onLayout={onContainerLayout}>
+            <View style={{ flex: 1 }} onStartShouldSetResponder={() => true} onResponderTerminationRequest={() => false}>
+              <ScrollView 
+                ref={scrollViewRef}
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.contentContainer}
+                keyboardShouldPersistTaps={'always'}
+                showsVerticalScrollIndicator={false}
+                scrollEnabled={false}
+                onScroll={onScroll}
+                onContentSizeChange={onContentSizeChange}
+                scrollEventThrottle={16}
+              >
+                {children ?? <Text>{text}</Text>}
+              </ScrollView>
+            </View>
+          </View>
+          <View style={styles.scrollBarContainer}>
+            <View 
+              ref={scrollBarTrackRef} 
+              style={{ ...styles.scrollBarTrack, backgroundColor: theme['c-primary-dark-100-alpha-300'] }}
+              onLayout={onTrackLayout}
+            >
+              <Animated.View
+                {...panResponder.panHandlers}
+                style={{
+                  ...styles.scrollBarThumb,
+                  backgroundColor: theme['c-primary-light-500'],
+                  top: thumbPosition,
+                  height: calculateThumbHeight(),
+                }}
+              />
+            </View>
+          </View>
         </View>
         <View
           style={{

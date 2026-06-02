@@ -413,7 +413,7 @@ export default memo(() => {
 
   const handleEditMetadata = useCallback((info: WebDAVSelectInfo) => {
     selectedMusicInfoRef.current = info.musicInfo
-    metadataEditTypeRef.current?.show(info.musicInfo.meta.filePath)
+    metadataEditTypeRef.current?.show(info.musicInfo.meta.filePath, info.musicInfo)
   }, [])
 
   const handleUpdateMetadata = useCallback(() => {
