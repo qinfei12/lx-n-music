@@ -10,7 +10,7 @@ import { showDesktopLyric, hideDesktopLyric } from '@/core/desktopLyric'
 import { updateSetting } from '@/core/common'
 import settingState from '@/store/setting/state'
 import { onWidgetPlayPause, onWidgetPrev, onWidgetNext } from '@/utils/nativeModules/musicWidget'
-import { log } from '@/utils/log'
+import { playerLog } from '@/utils/playerLog'
 
 let isInitialized = false
 
@@ -138,45 +138,45 @@ const registerPlaybackService = async () => {
   })
 
   TrackPlayer.addEventListener(TPEvent.PlaybackState, async (info) => {
-    log.info('[Player] PlaybackState changed:', JSON.stringify(info))
+    playerLog.info('PlaybackState changed:', JSON.stringify(info))
     if (global.lx.gettingUrlId || isTempId()) return
     // let currentIsPlaying = false
 
     switch (info.state) {
       case TPState.None:
-        log.info('[Player] State: None')
+        playerLog.info('State: None')
         break
       case TPState.Ready:
-        log.info('[Player] State: Ready')
+        playerLog.info('State: Ready')
         global.app_event.playerPause()
         global.app_event.pause()
         break
       case TPState.Stopped:
-        log.info('[Player] State: Stopped')
+        playerLog.info('State: Stopped')
         global.app_event.playerPause()
         global.app_event.pause()
         break
       case TPState.Paused:
-        log.info('[Player] State: Paused')
+        playerLog.info('State: Paused')
         global.app_event.playerPause()
         global.app_event.pause()
         break
       case TPState.Playing:
-        log.info('[Player] State: Playing')
+        playerLog.info('State: Playing')
         global.app_event.playerPlaying()
         global.app_event.play()
         break
       case TPState.Buffering:
-        log.info('[Player] State: Buffering')
+        playerLog.info('State: Buffering')
         global.app_event.pause()
         global.app_event.playerWaiting()
         break
       case TPState.Connecting:
-        log.info('[Player] State: Connecting')
+        playerLog.info('State: Connecting')
         global.app_event.playerLoadstart()
         break
       default:
-        log.info('[Player] State: Unknown', info.state)
+        playerLog.info('State: Unknown', info.state)
         break
     }
     if (global.lx.isPlayedStop) return handleExitApp('Timeout Exit')

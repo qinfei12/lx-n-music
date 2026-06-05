@@ -4,7 +4,7 @@ import { filterSensitiveSettingsForSync, getAllDataForSync } from './syncHelpers
 import { confirmDialog, toast } from '@/utils/tools';
 import { updateSetting } from '@/core/common';
 import settingState from '@/store/setting/state';
-import { log } from '@/utils/log';
+import { webDAVLog } from '@/core/webdavMusic/logger';
 import { debounce } from '@/utils/common';
 import { getOperationQueue, clearOperationQueue, loadOperationQueue } from './opQueue';
 import { applyListOperation } from '@/utils/listManage';
@@ -243,7 +243,7 @@ export async function manualUploadSettingsAndApis() {
 
     toast('上传成功！');
   } catch (error: any) {
-    log.error(`[WebDAV Manual Upload] Failed: ${error.stack ?? error.message}`);
+    webDAVLog.error(`[Manual Upload] Failed: ${error.stack ?? error.message}`);
     toast(`上传失败: ${error.message}`, 'long');
   } finally {
     isSyncing = false;
@@ -293,7 +293,7 @@ export async function manualDownloadSettingsAndApis() {
 
     toast('下载同步完成！');
   } catch (error: any) {
-    log.error(`[WebDAV Manual Download] Failed: ${error.stack ?? error.message}`);
+    webDAVLog.error(`[Manual Download] Failed: ${error.stack ?? error.message}`);
     toast(`下载失败: ${error.message}`, 'long');
   } finally {
     isSyncing = false;
@@ -326,7 +326,7 @@ export async function manualUploadLists() {
     await clearOperationQueue();
     toast('歌单上传成功！');
   } catch (error: any) {
-    log.error(`[WebDAV Manual Upload Lists] Failed: ${error.stack ?? error.message}`);
+    webDAVLog.error(`[Manual Upload Lists] Failed: ${error.stack ?? error.message}`);
     toast(`上传失败: ${error.message}`, 'long');
   } finally {
     isSyncing = false;
@@ -366,7 +366,7 @@ export async function manualDownloadLists() {
       toast('云端未找到歌单文件');
     }
   } catch (error: any) {
-    log.error(`[WebDAV Manual Download Lists] Failed: ${error.stack ?? error.message}`);
+    webDAVLog.error(`[Manual Download Lists] Failed: ${error.stack ?? error.message}`);
     toast(`下载失败: ${error.message}`, 'long');
   } finally {
     isSyncing = false;
@@ -393,7 +393,7 @@ export async function triggerWebDAVSync(isManual = false) {
     const localOpQueue = getOperationQueue();
 
     if (remoteListsContent === null) {
-      log.info('[WebDAV Sync] Remote lists not found. Uploading local state.');
+      webDAVLog.info('[Sync] Remote lists not found. Uploading local state.');
       const { lists } = await getAllDataForSync();
       await uploadLists(remoteListsPath, lists);
       await clearOperationQueue();
@@ -405,7 +405,7 @@ export async function triggerWebDAVSync(isManual = false) {
 
       // 首次同步逻辑：检测到本地无同步记录但云端有数据，询问用户
       if (localTimestamp === 0) {
-        log.info('[WebDAV Sync] First sync detected with existing remote data. Prompting user.');
+        webDAVLog.info('[Sync] First sync detected with existing remote data. Prompting user.');
         const userChoice = await confirmDialog({
           title: '首次同步确认',
           message: '云端已存在歌单数据。由于这是该设备上首次同步，请选择您的操作：\n\n“下载”：将使用云端数据覆盖本地（推荐用于恢复数据）。\n“上传”：将使用本地数据覆盖云端（请务必确认本地数据是您最终想要的版本）。',
@@ -414,14 +414,14 @@ export async function triggerWebDAVSync(isManual = false) {
         });
 
         if (userChoice === true) { // 上传本地
-          log.info('[WebDAV Sync] User chose to upload local state during first sync.');
+          webDAVLog.info('[Sync] User chose to upload local state during first sync.');
           const { lists: currentLocalLists } = await getAllDataForSync();
           await uploadLists(remoteListsPath, currentLocalLists);
           await clearOperationQueue();
           toast('本地歌单已上传覆盖云端！');
           return;
         } else if (userChoice === false) { // 下载云端数据
-          log.info('[WebDAV Sync] User chose to download remote state during first sync.');
+          webDAVLog.info('[Sync] User chose to download remote state during first sync.');
           await overwriteListFull(remoteData.data);
           await applySyncedExtraData(remoteData);
           await clearOperationQueue();
@@ -429,7 +429,7 @@ export async function triggerWebDAVSync(isManual = false) {
           toast('已从云端同步歌单数据到本地！');
           return;
         } else {
-          log.info('[WebDAV Sync] First sync resolution cancelled.');
+          webDAVLog.info('[Sync] First sync resolution cancelled.');
           if (isManual) toast('同步已取消');
           return;
         }
@@ -440,20 +440,20 @@ export async function triggerWebDAVSync(isManual = false) {
       const hasLocalChanges = localOpQueue.length > 0 || listsChanged || await hasLocalExtraDataChanges(remoteData);
 
       if (hasRemoteUpdate) {
-        log.info('[WebDAV Sync] Remote is newer. Starting merge process.');
+        webDAVLog.info('[Sync] Remote is newer. Starting merge process.');
         let mergedData = remoteData.data;
         let conflictOccurred = false;
 
         if (hasLocalChanges) {
           nextListsUploadExtraData = await getMergedExtraData(remoteData);
-          log.info(`[WebDAV Sync] Applying ${localOpQueue.length} local operations onto remote data.`);
+          webDAVLog.info(`[Sync] Applying ${localOpQueue.length} local operations onto remote data.`);
           try {
             for (const op of localOpQueue) {
               mergedData = await applyListOperation(mergedData, op);
             }
           } catch (error: any) {
             conflictOccurred = true;
-            log.error('[WebDAV Sync] A true conflict occurred during operation merge:', error.message);
+            webDAVLog.error('[Sync] A true conflict occurred during operation merge:', error.message);
           }
         }
 
@@ -466,24 +466,24 @@ export async function triggerWebDAVSync(isManual = false) {
             confirmButtonText: '本地覆盖云端',
           });
           if (userChoice === true) { // 用户选择 "本地覆盖云端"
-            log.info('[WebDAV Sync] Conflict resolved by user: Force pushing local state.');
+            webDAVLog.info('[Sync] Conflict resolved by user: Force pushing local state.');
             const { lists: currentLocalLists } = await getAllDataForSync();
             await uploadLists(remoteListsPath, currentLocalLists);
             await clearOperationQueue();
             toast('已强制使用本地歌单覆盖云端！');
           } else if (userChoice === false) { // 用户选择 "云端覆盖本地"
-            log.info('[WebDAV Sync] Conflict resolved by user: Force pulling remote state.');
+            webDAVLog.info('[Sync] Conflict resolved by user: Force pulling remote state.');
             await overwriteListFull(remoteData.data);
             await applySyncedExtraData(remoteData);
             await clearOperationQueue();
             updateSetting({ 'sync.webdav.lastSyncTimeLists': remoteTimestamp });
             toast('已从云端同步歌单，本地更改已放弃！');
           } else { // 用户关闭了对话框 (userChoice === null)
-            log.info('[WebDAV Sync] Conflict resolution cancelled by user.');
+            webDAVLog.info('[Sync] Conflict resolution cancelled by user.');
             toast('操作已取消');
           }
         } else {
-          log.info('[WebDAV Sync] Merge successful or only remote changes detected.');
+          webDAVLog.info('[Sync] Merge successful or only remote changes detected.');
           await overwriteListFull(mergedData); // 应用合并后的数据到本地
           if (hasLocalChanges) {
             await uploadLists(remoteListsPath, mergedData); // 将合并后的结果上传
@@ -497,18 +497,18 @@ export async function triggerWebDAVSync(isManual = false) {
           await clearOperationQueue(); // 成功后清空队列
         }
       } else if (hasLocalChanges) {
-        log.info('[WebDAV Sync] Local has unsynced changes. Uploading.');
+        webDAVLog.info('[Sync] Local has unsynced changes. Uploading.');
         const { lists: currentLocalLists } = await getAllDataForSync();
         await uploadLists(remoteListsPath, currentLocalLists);
         await clearOperationQueue();
         if (isManual) toast('本地歌单已上传！');
       } else if (isManual) {
-        log.info('[WebDAV Sync] Lists are up to date.');
+        webDAVLog.info('[Sync] Lists are up to date.');
         toast('歌单已是最新，无需同步');
       }
     }
   } catch (error: any) {
-    log.error(`[WebDAV Sync] Sync failed: ${error.stack ?? error.message}`);
+    webDAVLog.error(`[Sync] Sync failed: ${error.stack ?? error.message}`);
     toast(`同步失败: ${error.message}`, 'long');
   } finally {
     isSyncing = false;

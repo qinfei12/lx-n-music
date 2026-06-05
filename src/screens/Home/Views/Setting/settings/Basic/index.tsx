@@ -20,6 +20,7 @@ import IsShowMyListSubMenu from './IsShowMyListSubMenu'
 import { useI18n } from '@/lang/i18n'
 import WyCookie from './WyCookie'
 import NavMenu from "@/screens/Home/Views/Setting/settings/Basic/NavMenu.tsx";
+import BilibiliMultiPage from './BilibiliMultiPage'
 
 export default memo(() => {
   const t = useI18n()
@@ -47,6 +48,7 @@ export default memo(() => {
       <Source />
       <SourceName />
       <WyCookie />
+      <BilibiliMultiPage />
     </Section>
   )
 })

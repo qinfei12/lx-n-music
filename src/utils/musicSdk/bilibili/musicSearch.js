@@ -1,5 +1,8 @@
 import { httpFetch } from '../../request'
-import { log } from '@/utils/log'
+import { searchLog } from '@/utils/searchLog'
+import settingState from '@/store/setting/state'
+
+const log = searchLog
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 const headers = {
@@ -113,13 +116,29 @@ function formatMedia(result) {
   }
 }
 
+async function getVideoDetail(bvid, aid) {
+  log.info('[Bilibili Search] getVideoDetail 开始 - bvid: ' + bvid + ', aid: ' + aid)
+  const params = bvid ? { bvid } : { aid }
+  try {
+    const requestObj = httpFetch("https://api.bilibili.com/x/web-interface/view", { headers, params })
+    const { body } = await requestObj.promise
+    const data = typeof body === 'string' ? JSON.parse(body) : body
+    log.info('[Bilibili Search] getVideoDetail - 响应code: ' + data?.code)
+    log.info('[Bilibili Search] getVideoDetail - 页数: ' + (data?.data?.pages?.length || 0))
+    return data
+  } catch (err) {
+    log.error('[Bilibili Search] getVideoDetail 失败: ' + (err?.message || err))
+    return null
+  }
+}
+
 const musicSearchModule = {
   limit: 30,
   total: 0,
   page: 0,
   allPage: 1,
 
-  handleResult(searchResults, page, limit, total = 0, numPages = 0) {
+  async handleResult(searchResults, page, limit, total = 0, numPages = 0) {
     log.info('[Bilibili Search] handleResult - 原始结果数量: ' + searchResults.length + ', page: ' + page + ', limit: ' + limit + ', total: ' + total + ', numPages: ' + numPages)
     
     // 使用API默认排序，不进行客户端二次排序
@@ -133,30 +152,77 @@ const musicSearchModule = {
     // API已经返回了分页后的结果，不需要再做本地分页
     log.info('[Bilibili Search] handleResult - 直接使用API分页结果，数量: ' + sortedResults.length + ', allPage: ' + this.allPage)
 
-    const list = sortedResults.map((item, index) => {
-      const musicInfo = {
-        name: item.title || '未知歌曲',
-        singer: item.artist || '未知歌手',
-        source: 'bilibili',
-        songmid: generateSongId(item.bvid, item.aid),
-        albumId: generateAlbumId(item.bvid || item.aid),
-        interval: formatPlayTime(item.duration || 0),
-        albumName: item.album || '未知专辑',
-        lrc: null,
-        img: item.pic,
-        otherSource: null,
-        types: [{ type: '128k', size: 'UNKNOWN' }],
-        _types: { '128k': { size: 'UNKNOWN' } },
-        typeUrl: {},
-        _bilibiliData: {
-          bvid: item.bvid,
-          aid: item.aid,
-          cid: item.cid,
-        },
+    const list = []
+    for (const item of sortedResults) {
+      const index = list.length
+      
+      const bvid = item.bvid
+      const aid = item.aid
+      
+      const enableMultiPage = settingState.setting['common.bilibili_multi_page'] !== false
+      log.info('[Bilibili Search] 多P模式: ' + (enableMultiPage ? '开启' : '关闭'))
+      
+      let videoDetail = null
+      if (enableMultiPage && (bvid || aid)) {
+        videoDetail = await getVideoDetail(bvid, aid)
       }
-      log.info('[Bilibili Search] handleResult [' + index + ']: songmid=' + musicInfo.songmid + ', bvid=' + item.bvid + ', aid=' + item.aid + ', cid=' + item.cid + ', name=' + musicInfo.name)
-      return musicInfo
-    })
+      
+      const pages = videoDetail?.data?.pages
+      const isMultiPage = enableMultiPage && pages && Array.isArray(pages) && pages.length > 1
+      
+      if (isMultiPage) {
+        log.info('[Bilibili Search] 检测到合集视频: ' + item.title + ', 共 ' + pages.length + ' 个P')
+        let partIndex = 1
+        for (const page of pages) {
+          const musicInfo = {
+            name: (page.part || `P${partIndex}`) + ' - ' + item.title,
+            singer: item.artist || '未知歌手',
+            source: 'bilibili',
+            songmid: generateSongId(bvid, aid) + '_' + page.cid,
+            albumId: generateAlbumId(item.bvid || item.aid),
+            interval: formatPlayTime(page.duration || 0),
+            albumName: item.album || '未知专辑',
+            lrc: null,
+            img: item.pic,
+            otherSource: null,
+            types: [{ type: '128k', size: 'UNKNOWN' }],
+            _types: { '128k': { size: 'UNKNOWN' } },
+            typeUrl: {},
+            _bilibiliData: {
+              bvid: item.bvid,
+              aid: item.aid,
+              cid: page.cid,
+            },
+          }
+          log.info('[Bilibili Search] handleResult [' + index + ']-P' + partIndex + ': songmid=' + musicInfo.songmid + ', cid=' + page.cid + ', name=' + musicInfo.name)
+          list.push(musicInfo)
+          partIndex++
+        }
+      } else {
+        const musicInfo = {
+          name: item.title || '未知歌曲',
+          singer: item.artist || '未知歌手',
+          source: 'bilibili',
+          songmid: generateSongId(item.bvid, item.aid),
+          albumId: generateAlbumId(item.bvid || item.aid),
+          interval: formatPlayTime(item.duration || 0),
+          albumName: item.album || '未知专辑',
+          lrc: null,
+          img: item.pic,
+          otherSource: null,
+          types: [{ type: '128k', size: 'UNKNOWN' }],
+          _types: { '128k': { size: 'UNKNOWN' } },
+          typeUrl: {},
+          _bilibiliData: {
+            bvid: item.bvid,
+            aid: item.aid,
+            cid: item.cid || videoDetail?.data?.cid,
+          },
+        }
+        log.info('[Bilibili Search] handleResult [' + index + ']: songmid=' + musicInfo.songmid + ', bvid=' + item.bvid + ', aid=' + item.aid + ', cid=' + item.cid + ', name=' + musicInfo.name)
+        list.push(musicInfo)
+      }
+    }
 
     return list
   },
@@ -275,7 +341,7 @@ const musicSearchModule = {
       
       let list
       try {
-        list = this.handleResult(searchResults, page, limit, data.data.numResults, data.data.numPages)
+        list = await this.handleResult(searchResults, page, limit, data.data.numResults, data.data.numPages)
         log.info('[Bilibili Search] handleResult 完成，list数量: ' + list.length)
       } catch (handleErr) {
         log.error('[Bilibili Search] handleResult 失败: ' + (handleErr?.message || handleErr))

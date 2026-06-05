@@ -1,7 +1,9 @@
 import searchMusicState, { type Source } from '@/store/search/music/state'
 import searchMusicActions, { type SearchResult } from '@/store/search/music/action'
 import musicSdk from '@/utils/musicSdk'
-import { log } from '@/utils/log'
+import { searchLog } from '@/utils/searchLog'
+
+const log = searchLog
 
 log.info('[Search Music] 模块初始化')
 log.info('[Search Music] musicSdk sources: ' + Object.keys(musicSdk).join(', '))

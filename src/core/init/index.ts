@@ -16,6 +16,8 @@ import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
 import { cheatTip } from '@/utils/tools'
 import * as networkLyric from '@/core/networkLyric'
+import { searchLog } from '@/utils/searchLog'
+import { playerLog } from '@/utils/playerLog'
 
 let isFirstPush = true
 const handlePushedHomeScreen = async () => {
@@ -51,6 +53,11 @@ export default async () => {
   bootLog('Font size changed.')
   const setting = await initSetting()
   bootLog('Setting inited.')
+  
+  searchLog.init()
+  bootLog('Search Log inited.')
+  playerLog.init()
+  bootLog('Player Log inited.')
   // console.log(setting)
 
   // 将没有相互依赖的初始化任务并行化

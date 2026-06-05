@@ -1,6 +1,8 @@
 import { httpFetch } from '../../request'
 import musicSearch from './musicSearch'
-import { log } from '@/utils/log'
+import { searchLog } from '@/utils/searchLog'
+
+const log = searchLog
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
 const headers = {
@@ -19,6 +21,8 @@ async function getCid(bvid, aid) {
     const data = typeof body === 'string' ? JSON.parse(body) : body
     log.info('[Bilibili] getCid - 响应code: ' + data?.code + ', message: ' + data?.message)
     log.info('[Bilibili] getCid - 获取到cid: ' + data?.data?.cid)
+    log.info('[Bilibili] getCid - 视频时长: ' + data?.data?.duration + '秒')
+    log.info('[Bilibili] getCid - 合集页数: ' + (data?.data?.pages?.length || 0))
     return data
   } catch (err) {
     log.error('[Bilibili] getCid 失败: ' + (err?.message || err))
@@ -79,14 +83,17 @@ async function getBilibiliMusicUrl(musicInfo, type) {
   
   log.info('[Bilibili] 最终解析 - bvid: ' + bvid + ', aid: ' + aid + ', cid: ' + cid)
   
+  let cidRes = null
+  
   if (!cid) {
     log.info('[Bilibili] cid为空，开始获取cid')
     try {
-      const cidRes = await getCid(bvid, aid)
+      cidRes = await getCid(bvid, aid)
       log.info('[Bilibili] getCid 返回数据结构: ' + JSON.stringify(Object.keys(cidRes || {})))
       log.info('[Bilibili] getCid data 结构: ' + JSON.stringify(cidRes?.data ? Object.keys(cidRes.data) : '无data'))
       cid = cidRes?.data?.cid
       log.info('[Bilibili] 获取到的cid值: ' + cid)
+      
       if (!cid) {
         log.error('[Bilibili] 获取cid失败 - cid为空')
         log.error('[Bilibili] cidRes.data: ' + JSON.stringify(cidRes?.data))
@@ -95,6 +102,34 @@ async function getBilibiliMusicUrl(musicInfo, type) {
       log.error('[Bilibili] 获取cid异常: ' + (err?.message || err))
       log.error('[Bilibili] 错误堆栈: ' + (err?.stack || '无'))
       throw err
+    }
+  }
+  
+  if (!cidRes) {
+    try {
+      cidRes = await getCid(bvid, aid)
+    } catch (err) {
+      log.warn('[Bilibili] 获取视频详情失败，跳过时长修正: ' + err.message)
+    }
+  }
+  
+  if (cidRes?.data?.pages && Array.isArray(cidRes.data.pages)) {
+    const pages = cidRes.data.pages
+    if (pages.length > 1) {
+      log.info('[Bilibili] 检测到合集视频，共 ' + pages.length + ' 个P')
+      const currentPage = pages.find(page => page.cid === cid)
+      if (currentPage) {
+        log.info('[Bilibili] 当前P时长: ' + currentPage.duration + '秒')
+        log.info('[Bilibili] 当前P标题: ' + currentPage.part)
+        if (musicInfo && currentPage.duration) {
+          log.info('[Bilibili] 更新musicInfo.interval为单P时长')
+          musicInfo.interval = currentPage.duration
+        }
+      } else {
+        log.warn('[Bilibili] 未找到当前cid对应的页面信息')
+      }
+    } else if (pages.length === 1) {
+      log.info('[Bilibili] 单P视频，时长: ' + cidRes.data.duration + '秒')
     }
   }
   

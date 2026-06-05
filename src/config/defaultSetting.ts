@@ -20,6 +20,9 @@ const defaultSetting: LX.AppSetting = {
   'common.isShowStartupGreeting': true,
   'common.hideNavigationBar': false,
   'common.isEnableWebDAVLog': false,
+  'common.isEnableSearchLog': false,
+  'common.isEnablePlayerLog': false,
+  'common.bilibili_multi_page': false,
 
   'common.navStatus': {
     nav_songlist: true,
