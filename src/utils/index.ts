@@ -27,21 +27,25 @@ export function compareVer(currentVer: string, targetVer: string): -1 | 0 | 1 {
 }
 
 export const toNewMusicInfo = (oldMusicInfo: any): LX.Music.MusicInfo => {
+  if (!oldMusicInfo || !oldMusicInfo.songmid || !oldMusicInfo.source) {
+    throw new Error('Invalid music info')
+  }
+
   const meta: Record<string, any> = {
-    songId: oldMusicInfo.songmid, // 歌曲ID，local为文件路径
-    albumName: oldMusicInfo.albumName, // 歌曲专辑名称
-    picUrl: oldMusicInfo.img, // 歌曲图片链接
+    songId: oldMusicInfo.songmid,
+    albumName: oldMusicInfo.albumName || '',
+    picUrl: oldMusicInfo.img || '',
   }
   const newInfo = {
-    id: oldMusicInfo.songmid?.startsWith(`${oldMusicInfo.source}_`)
-      ? oldMusicInfo.songmid
-      : `${oldMusicInfo.source as string}_${oldMusicInfo.songmid as string}`,
-    name: oldMusicInfo.name,
-    alias: oldMusicInfo.alias,
-    singer: oldMusicInfo.singer,
-    artists: oldMusicInfo.artists,
+    id: typeof oldMusicInfo.songmid === 'string' && oldMusicInfo.songmid.startsWith(`${oldMusicInfo.source}_`) ? 
+      oldMusicInfo.songmid : 
+      `${oldMusicInfo.source}_${oldMusicInfo.songmid}`,
+    name: oldMusicInfo.name || '',
+    alias: oldMusicInfo.alias || '',
+    singer: oldMusicInfo.singer || '',
+    artists: oldMusicInfo.artists || [],
     source: oldMusicInfo.source,
-    interval: oldMusicInfo.interval,
+    interval: oldMusicInfo.interval || '',
     meta: meta as LX.Music.MusicInfoOnline['meta'],
   }
 
@@ -55,47 +59,50 @@ export const toNewMusicInfo = (oldMusicInfo: any): LX.Music.MusicInfo => {
     if (oldMusicInfo.originCoverType || oldMusicInfo.meta?.originCoverType) {
       meta.originCoverType = oldMusicInfo.originCoverType || oldMusicInfo.meta.originCoverType;
     }
-    meta.qualitys = oldMusicInfo.types
-    meta._qualitys = oldMusicInfo._types
-    meta.albumId = oldMusicInfo.albumId
-    if (meta._qualitys.flac32bit && !meta._qualitys.hires) {
-      meta._qualitys.hires = meta._qualitys.flac32bit
-      delete meta._qualitys.flac32bit
+    meta.qualitys = oldMusicInfo.types || []
+    meta._qualitys = oldMusicInfo._types || {}
+    meta.albumId = oldMusicInfo.albumId || ''
 
-      meta.qualitys = (meta.qualitys as any[]).map((quality) => {
-        if (quality.type == 'flac32bit') quality.type = 'hires'
-        return quality
-      })
-    }
+    if (meta._qualitys && typeof meta._qualitys === 'object' && Array.isArray(meta.qualitys)) {
+      if (meta._qualitys.flac32bit && !meta._qualitys.hires) {
+        meta._qualitys.hires = meta._qualitys.flac32bit
+        delete meta._qualitys.flac32bit
 
-    if (meta._qualitys.flac24bit && !meta._qualitys.hires) {
-      meta._qualitys.hires = meta._qualitys.flac24bit
-      delete meta._qualitys.flac24bit
+        meta.qualitys = meta.qualitys.map((quality) => {
+          if (quality.type == 'flac32bit') quality.type = 'hires'
+          return quality
+        })
+      }
 
-      meta.qualitys = (meta.qualitys as any[]).map((quality) => {
-        if (quality.type == 'flac24bit') quality.type = 'hires'
-        return quality
-      })
-    }
+      if (meta._qualitys.flac24bit && !meta._qualitys.hires) {
+        meta._qualitys.hires = meta._qualitys.flac24bit
+        delete meta._qualitys.flac24bit
 
-    if (meta._qualitys.effect && !meta._qualitys.atmos) {
-      meta._qualitys.atmos = meta._qualitys.effect
-      delete meta._qualitys.effect
+        meta.qualitys = meta.qualitys.map((quality) => {
+          if (quality.type == 'flac24bit') quality.type = 'hires'
+          return quality
+        })
+      }
 
-      meta.qualitys = (meta.qualitys as any[]).map((quality) => {
-        if (quality.type == 'effect') quality.type = 'atmos'
-        return quality
-      })
-    }
+      if (meta._qualitys.effect && !meta._qualitys.atmos) {
+        meta._qualitys.atmos = meta._qualitys.effect
+        delete meta._qualitys.effect
 
-    if (meta._qualitys.effect_plus && !meta._qualitys.atmos_plus) {
-      meta._qualitys.atmos_plus = meta._qualitys.effect_plus
-      delete meta._qualitys.effect_plus
+        meta.qualitys = meta.qualitys.map((quality) => {
+          if (quality.type == 'effect') quality.type = 'atmos'
+          return quality
+        })
+      }
 
-      meta.qualitys = (meta.qualitys as any[]).map((quality) => {
-        if (quality.type == 'effect_plus') quality.type = 'atmos_plus'
-        return quality
-      })
+      if (meta._qualitys.effect_plus && !meta._qualitys.atmos_plus) {
+        meta._qualitys.atmos_plus = meta._qualitys.effect_plus
+        delete meta._qualitys.effect_plus
+
+        meta.qualitys = meta.qualitys.map((quality) => {
+          if (quality.type == 'effect_plus') quality.type = 'atmos_plus'
+          return quality
+        })
+      }
     }
 
     switch (oldMusicInfo.source) {
