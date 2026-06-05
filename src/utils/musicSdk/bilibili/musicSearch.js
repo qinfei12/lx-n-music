@@ -122,17 +122,9 @@ const musicSearchModule = {
   handleResult(searchResults, page, limit, total = 0, numPages = 0) {
     log.info('[Bilibili Search] handleResult - 原始结果数量: ' + searchResults.length + ', page: ' + page + ', limit: ' + limit + ', total: ' + total + ', numPages: ' + numPages)
     
-    let sortedResults = [...searchResults]
-    try {
-      sortedResults.sort((a, b) => {
-        const aPlay = a.play || a.view || 0
-        const bPlay = b.play || b.view || 0
-        return Number(bPlay) - Number(aPlay)
-      })
-      log.info('[Bilibili Search] handleResult - 已按热度排序')
-    } catch (e) {
-      log.info('[Bilibili Search] handleResult - 排序失败，保持原始顺序: ' + e)
-    }
+    // 使用API默认排序，不进行客户端二次排序
+    const sortedResults = [...searchResults]
+    log.info('[Bilibili Search] handleResult - 使用API默认排序')
     
     this.total = total || sortedResults.length
     this.allPage = numPages || Math.ceil(this.total / limit)
@@ -190,7 +182,7 @@ const musicSearchModule = {
       const params = {
         context: "",
         page,
-        order: "", // 恢复原来的排序方式
+        order: "", // 默认排序
         page_size: limit,
         keyword,
         duration: "",
