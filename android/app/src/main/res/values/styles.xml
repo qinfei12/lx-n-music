@@ -5,6 +5,11 @@
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
         <item name="android:windowBackground">@color/ic_launcher_background</item>
+        <!-- 允许窗口延伸到刘海/挖孔屏区域（Android 9.0+） -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <!-- 状态栏和导航栏透明，允许内容延伸 -->
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
     </style>
 
 </resources>

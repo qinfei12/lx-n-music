@@ -75,11 +75,15 @@ export async function pushHomeScreen() {
                   backgroundColor: 'transparent',
                 },
                 navigationBar: {
-          visible: !settingState.setting['common.hideNavigationBar'],
-          backgroundColor: theme['c-content-background'],
-        },
+                  visible: !settingState.setting['common.hideNavigationBar'],
+                  backgroundColor: theme['c-content-background'],
+                },
                 layout: {
-                  componentBackgroundColor: theme['c-content-background'],
+                  componentBackgroundColor: 'transparent',
+                },
+                android: {
+                  // 强制通知 RNN 该页面是全屏幕渲染，不要为刘海留白
+                  fitsSystemWindows: false,
                 },
               },
             },
@@ -146,7 +150,10 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
             backgroundColor: theme['c-content-background'],
           },
           layout: {
-            componentBackgroundColor: theme['c-content-background'],
+            componentBackgroundColor: 'transparent',
+          },
+          android: {
+            fitsSystemWindows: false,
           },
           animations: {
             push: skipAnimation
@@ -235,7 +242,10 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
             backgroundColor: theme['c-content-background'],
           },
           layout: {
-            componentBackgroundColor: theme['c-content-background'],
+            componentBackgroundColor: 'transparent',
+          },
+          android: {
+            fitsSystemWindows: false,
           },
           animations: {
             push: {
@@ -368,7 +378,10 @@ export function pushCommentScreen(componentId: string) {
             backgroundColor: theme['c-content-background'],
           },
           layout: {
-            componentBackgroundColor: theme['c-content-background'],
+            componentBackgroundColor: 'transparent',
+          },
+          android: {
+            fitsSystemWindows: false,
           },
           animations: {
             push: {
@@ -617,7 +630,10 @@ export function pushArtistDetailScreen(componentId: string, artistInfo: { id: st
           backgroundColor: 'transparent',
         },
         layout: {
-          componentBackgroundColor: theme['c-content-background'],
+          componentBackgroundColor: 'transparent',
+        },
+        android: {
+          fitsSystemWindows: false,
         },
         animations: {
           push: {
@@ -664,7 +680,10 @@ export function pushAlbumDetailScreen(componentId: string, albumInfo: any) {
           backgroundColor: 'transparent',
         },
         layout: {
-          componentBackgroundColor: theme['c-content-background'],
+          componentBackgroundColor: 'transparent',
+        },
+        android: {
+          fitsSystemWindows: false,
         },
         animations: {
           push: {
@@ -709,7 +728,10 @@ export function pushDownloadManagerScreen(componentId: string) {
           backgroundColor: 'transparent',
         },
         layout: {
-          componentBackgroundColor: theme['c-content-background'],
+          componentBackgroundColor: 'transparent',
+        },
+        android: {
+          fitsSystemWindows: false,
         },
         animations: {
           push: {
@@ -758,7 +780,10 @@ export function pushSimilarSongsScreen(componentId: string, similarSongs: LX.Mus
           backgroundColor: 'transparent',
         },
         layout: {
-          componentBackgroundColor: theme['c-content-background'],
+          componentBackgroundColor: 'transparent',
+        },
+        android: {
+          fitsSystemWindows: false,
         },
         animations: {
           push: {

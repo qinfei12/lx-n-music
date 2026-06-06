@@ -60,7 +60,13 @@ export default forwardRef<View, ImageBackgroundProps>(
             source={source}
             importantForAccessibility={importantForAccessibility}
             style={[
-              StyleSheet.absoluteFill,
+              {
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+              },
               {
                 // Temporary Workaround:
                 // Current (imperfect yet) implementation of <Image> overwrites width and height styles

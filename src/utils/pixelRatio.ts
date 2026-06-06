@@ -12,27 +12,39 @@ import { windowSizeTools } from './windowSizeTools'
 const designWidth = 375.0
 const designHeight = 667.0
 
-// 获取屏幕的dp
-const size = windowSizeTools.getSize()
-// console.log('size', size)
-let screenW = size.width
-let screenH = size.height
-if (screenW > screenH) {
-  const temp = screenW
-  screenW = screenH
-  screenH = temp
+/**
+ * 获取当前屏幕尺寸（动态获取）
+ */
+function getCurrentScreenDimensions() {
+  const size = windowSizeTools.getSize()
+  let screenW = size.width || 375
+  let screenH = size.height || 667
+  
+  // 无论横竖屏，始终将短边作为宽，长边作为高（保持设计稿比例计算一致）
+  if (screenW > screenH) {
+    const temp = screenW
+    screenW = screenH
+    screenH = temp
+  }
+  
+  const fontScale = PixelRatio.getFontScale()
+  const pixelRatio = PixelRatio.get()
+  const screenPxW = PixelRatio.getPixelSizeForLayoutSize(screenW)
+  const screenPxH = PixelRatio.getPixelSizeForLayoutSize(screenH)
+  const scaleW = screenPxW / designWidth
+  const scaleH = screenPxH / designHeight
+  const scale = Math.min(scaleW, scaleH, 3.1)
+  
+  return {
+    screenW,
+    screenH,
+    fontScale,
+    pixelRatio,
+    screenPxW,
+    screenPxH,
+    scale
+  }
 }
-let fontScale = PixelRatio.getFontScale()
-let pixelRatio = PixelRatio.get()
-// 根据dp获取屏幕的px
-let screenPxW = PixelRatio.getPixelSizeForLayoutSize(screenW)
-let screenPxH = PixelRatio.getPixelSizeForLayoutSize(screenH)
-// console.log(screenPxW, screenPxH)
-
-const scaleW = screenPxW / designWidth
-const scaleH = screenPxH / designHeight
-const scale = Math.min(scaleW, scaleH, 3.1)
-// console.log(scale)
 
 /**
  * 设置text
@@ -40,16 +52,14 @@ const scale = Math.min(scaleW, scaleH, 3.1)
  * @returns dp
  */
 export function getTextSize(size: number) {
-  // console.log('screenW======' + screenW)
-  // console.log('screenPxW======' + screenPxW)
+  const { screenW, screenH, fontScale } = getCurrentScreenDimensions()
   let scaleWidth = screenW / designWidth
   let scaleHeight = screenH / designHeight
-  // console.log(scaleWidth, scaleHeight)
   let scale = Math.min(scaleWidth, scaleHeight, 1.3)
   size = Math.floor((size * scale) / fontScale)
-  // console.log(size)
   return size
 }
+
 export function setSpText(size: number) {
   return getTextSize(size) * global.lx.fontSize
 }
@@ -60,8 +70,7 @@ export function setSpText(size: number) {
  * @returns dp
  */
 export function scaleSizeH(size: number) {
-  // console.log(screenPxH / designHeight)
-  // let scaleHeight = size * Math.min(screenPxH / designHeight, 3.1)
+  const { scale, pixelRatio } = getCurrentScreenDimensions()
   let scaleHeight = size * scale
   size = Math.floor(scaleHeight / pixelRatio)
   return size * global.lx.fontSize
@@ -73,8 +82,7 @@ export function scaleSizeH(size: number) {
  * @returns dp
  */
 export function scaleSizeW(size: number) {
-  // console.log(screenPxW / designWidth)
-  // let scaleWidth = size * Math.min(screenPxW / designWidth, 3.1)
+  const { scale, pixelRatio } = getCurrentScreenDimensions()
   let scaleWidth = size * scale
   size = Math.floor(scaleWidth / pixelRatio)
   return size * global.lx.fontSize
@@ -89,6 +97,7 @@ export const scaleSizeHR = (size: number) => {
 }
 
 export const scaleSizeAbsHR = (size: number) => {
+  const { scale, pixelRatio } = getCurrentScreenDimensions()
   let scaleHeight = size * scale
   return size * 2 - Math.floor(scaleHeight / pixelRatio)
 }

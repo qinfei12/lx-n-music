@@ -116,7 +116,7 @@ const PlayHistoryOverlay = () => {
   }, [])
 
   return visible ? (
-    <View style={{ ...styles.historyOverlay, backgroundColor: theme['c-content-background'] }}>
+    <View style={{ ...styles.historyOverlay, backgroundColor: 'transparent' }}>
       {component}
     </View>
   ) : null

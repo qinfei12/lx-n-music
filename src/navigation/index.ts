@@ -16,6 +16,16 @@ const init = (callback: () => void | Promise<void>) => {
   if (unRegisterEvent) unRegisterEvent.remove()
 
   Navigation.setDefaultOptions({
+    statusBar: {
+      drawBehind: true, // 👈 允许页面内容绘制到状态栏/刘海屏后方
+    },
+    navigationBar: {
+      drawBehind: true, // 👈 允许页面内容绘制到导航栏后方
+    },
+    android: {
+      // 强制通知 RNN 该页面是全屏幕渲染，不要为刘海留白
+      fitsSystemWindows: false,
+    },
     // animations: {
     //   setRoot: {
     //     waitForRender: true,

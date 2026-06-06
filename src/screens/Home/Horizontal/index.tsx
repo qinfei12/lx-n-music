@@ -11,6 +11,7 @@ const styles = createStyle({
   container: {
     flex: 1,
     flexDirection: 'row',
+    overflow: 'visible',
   },
   content: {
     flex: 1,
@@ -20,7 +21,7 @@ const styles = createStyle({
 
 export default ({ componentId }: { componentId: string }) => {
   return (
-    <>
+    <View style={{ flex: 1, overflow: 'visible' }}>
       <StatusBar />
       <View style={styles.container}>
         <Aside />
@@ -30,6 +31,6 @@ export default ({ componentId }: { componentId: string }) => {
           <PlayerBar componentId={componentId} isHome />
         </View>
       </View>
-    </>
+    </View>
   )
 }

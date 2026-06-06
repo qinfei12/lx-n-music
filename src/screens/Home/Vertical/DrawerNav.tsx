@@ -257,7 +257,7 @@ export default memo(() => {
   }, [navStatus, navOrder]);
 
   return (
-    <View style={{ ...styles.container, backgroundColor: theme['c-content-background'] }}>
+    <View style={{ ...styles.container, backgroundColor: 'transparent' }}>
       <Header />
       <ScrollView style={styles.menus}>
         <View style={styles.list}>

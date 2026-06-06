@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef} from 'react'
+import { View } from 'react-native'
 import { useHorizontalMode } from '@/utils/hooks'
 import PageContent from '@/components/PageContent'
 import {setComponentId, setNavActiveId} from '@/core/common'
@@ -76,12 +77,12 @@ export default ({ componentId }: Props) => {
   )
 
   return (
-    <>
+    <View style={{ flex: 1, overflow: 'visible' }}>
       <PageContent>{isHorizontalMode ? <Horizontal componentId={componentId} /> : <Vertical componentId={componentId} />}</PageContent>
       <ArtistSelectorManager />
       <WebLoginManager />
       {/*<YouTubeLoginManager />*/}
       <VideoPlayerManager />
       <DownloadBall />
-    </>
+    </View>
   )}

@@ -4,6 +4,9 @@ import commonState from '@/store/common/state'
 import settingState from '@/store/setting/state'
 import { setStatusbarHeight } from '@/core/common'
 import { windowSizeTools, getWindowSize } from '@/utils/windowSizeTools'
+import { log } from '@/utils/log'
+
+const DEBUG_TAG = 'DEBUG_SizeView'
 
 const getStatusbarHeight = (winHeight: number, layoutHeight: number) => {
   const height =
@@ -20,25 +23,37 @@ export default memo(
     const currentHeightRef = useRef(commonState.statusbarHeight)
     const sizeRef = useRef([0, 0])
     const dimensionsChangedRef = useRef(true)
+    const viewRef = useRef<View>(null)
+
+    const updateLayout = useCallback(() => {
+      log.info(DEBUG_TAG, 'updateLayout 被调用');
+      viewRef.current?.measureInWindow((x, y, width, height) => {
+        log.info(DEBUG_TAG, 'measureInWindow 得到尺寸:', { x, y, width, height });
+        handleLayout({ nativeEvent: { layout: { width, height } } })
+      })
+    }, [])
+
     const handleLayout = useCallback(
       ({
         nativeEvent: { layout },
       }: LayoutChangeEvent | { nativeEvent: { layout: { width: number; height: number } } }) => {
-        // console.log('handleLayout')
-        if (!dimensionsChangedRef.current) return
+        log.info(DEBUG_TAG, 'handleLayout 被触发', layout);
         void getWindowSize().then((size) => {
+          log.info(DEBUG_TAG, 'getWindowSize 返回:', size);
           dimensionsChangedRef.current = false
-          // console.log(layout, size)
           sizeRef.current = [size.height, layout.height]
           const height = getStatusbarHeight(size.height, layout.height)
 
+          log.info(DEBUG_TAG, '计算 statusBar 高度:', height);
           if (currentHeightRef.current != height) {
+            log.info(DEBUG_TAG, '更新 statusBar 高度:', height);
             currentHeightRef.current = height
             setStatusbarHeight(height)
           }
-          // console.log(layout, size)
           const currentSize = windowSizeTools.getSize()
+          log.info(DEBUG_TAG, '当前存储的尺寸:', currentSize, '实际布局尺寸:', layout);
           if (currentSize.width != layout.width || currentSize.height != layout.height) {
+            log.info(DEBUG_TAG, '更新存储的窗口尺寸!');
             windowSizeTools.setWindowSize(layout.width, layout.height)
           }
         })
@@ -46,16 +61,16 @@ export default memo(
       []
     )
     useEffect(() => {
-      // let timeout: NodeJS.Timeout | null = null
-      const subscription = Dimensions.addEventListener('change', () => {
+      const subscription = Dimensions.addEventListener('change', ({ window, screen }) => {
+        log.info(DEBUG_TAG, '=== 屏幕尺寸变化 ===');
+        log.info(DEBUG_TAG, 'window:', window);
+        log.info(DEBUG_TAG, 'screen:', screen);
         dimensionsChangedRef.current = true
-        // if (timeout) clearTimeout(timeout)
-        // timeout = setTimeout(() => {
-        //   timeout = null
-        //   viewRef.current?.measureInWindow((x, y, width, height) => {
-        //     handleLayout({ nativeEvent: { layout: { width, height } } })
-        //   })
-        // }, 100)
+        // 屏幕尺寸变化时，强制更新布局
+        setTimeout(() => {
+          log.info(DEBUG_TAG, '触发 updateLayout');
+          updateLayout()
+        }, 50)
       })
 
       const handleSettingUpdate = (keys: Array<keyof LX.AppSetting>) => {
@@ -73,8 +88,14 @@ export default memo(
         subscription.remove()
         global.state_event.off('configUpdated', handleSettingUpdate)
       }
-    }, [])
-    return <View style={StyleSheet.absoluteFill} onLayout={handleLayout} />
+    }, [updateLayout])
+
+    log.info(DEBUG_TAG, 'SizeView 渲染');
+    return <View 
+      ref={viewRef} 
+      style={StyleSheet.absoluteFill} 
+      onLayout={handleLayout} 
+    />;
   },
   () => true
 )
