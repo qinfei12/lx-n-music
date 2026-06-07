@@ -168,7 +168,7 @@ export default memo(({ componentId }: { componentId: string }) => {
         <View ref={coverRef} style={[styles.content, imageContainerStyle, { overflow: 'hidden' }]}>
           <Animated.View style={{ width: '100%', height: '100%', transform: [{ rotate: spin }] }}>
             <Image
-              url={(musicInfo.musicInfo as LX.Music.MusicInfo)?.meta?.picUrl} // 直接使用 store 中的数据
+              url={(musicInfo.musicInfo as LX.Music.MusicInfo)?.meta?.picUrl}
               nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_pic}
               style={imageStyle}
             />

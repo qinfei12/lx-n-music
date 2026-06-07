@@ -229,6 +229,11 @@ declare global {
       'player.isShowBluetoothLyric': boolean
 
       /**
+       * 是否启用滑动切歌
+       */
+      'player.isEnableSlideSwitchSong': boolean
+
+      /**
        * 播放详情页-歌词对齐方式
        */
       'playDetail.style.align': 'center' | 'left' | 'right'

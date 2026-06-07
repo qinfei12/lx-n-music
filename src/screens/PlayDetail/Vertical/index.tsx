@@ -1,5 +1,5 @@
 import {memo, useState, useRef, useMemo, useEffect, useCallback} from 'react'
-import { View, AppState } from 'react-native'
+import { View, AppState, Animated, PanResponder, Easing, Text } from 'react-native'
 
 import Header from './components/Header'
 // import Aside from './components/Aside'
@@ -12,6 +12,9 @@ import Lyric from './Lyric'
 import { screenkeepAwake, screenUnkeepAwake } from '@/utils/nativeModules/utils'
 import commonState, { type InitState as CommonState } from '@/store/common/state'
 import { createStyle } from '@/utils/tools'
+import { useWindowSize } from '@/utils/hooks'
+import { playNext, playPrev } from '@/core/player/player'
+import { useSettingValue } from '@/store/setting/hook'
 // import { useTheme } from '@/store/theme/hook'
 
 const LyricPage = ({ activeIndex }: { activeIndex: number }) => {
@@ -34,6 +37,90 @@ export default memo(({ componentId }: { componentId: string }) => {
   const [pageIndex, setPageIndex] = useState(0)
   const pagerViewRef = useRef<PagerView>(null);
   const showLyricRef = useRef(false)
+  const { height: winHeight } = useWindowSize()
+  const isEnableSlideSwitchSong = useSettingValue('player.isEnableSlideSwitchSong')
+  
+  // 滑动切换歌曲相关
+  const slideOffset = useRef(new Animated.Value(0)).current;
+  const maxSlide = winHeight * 0.45;
+  const slideThreshold = winHeight * 0.09;
+  const [slideHintText, setSlideHintText] = useState('');
+  const [slideHintVisible, setSlideHintVisible] = useState(false);
+  
+  // 回弹动画函数
+  const resetSlide = useCallback(() => {
+    setSlideHintVisible(false);
+    Animated.spring(slideOffset, {
+      toValue: 0,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  }, [slideOffset]);
+
+  // 滑动手势识别
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // 只在封面页（pageIndex === 0）且启用滑动切歌时响应滑动
+        // 更宽松的条件：只要垂直移动超过阈值，不管水平移动多少都响应
+        return isEnableSlideSwitchSong && pageIndex === 0 && Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        // 手势开始
+      },
+      onPanResponderMove: (_, gestureState) => {
+        slideOffset.setValue(gestureState.dy * 0.8);
+        
+        // 更新滑动提示文字
+        if (gestureState.dy < -slideThreshold) {
+          setSlideHintText('下一首');
+          setSlideHintVisible(true);
+        } else if (gestureState.dy > slideThreshold) {
+          setSlideHintText('上一首');
+          setSlideHintVisible(true);
+        } else {
+          setSlideHintVisible(false);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy < -slideThreshold) {
+          void playNext();
+        } else if (gestureState.dy > slideThreshold) {
+          void playPrev();
+        }
+        resetSlide();
+      },
+      onPanResponderTerminate: () => {
+        // 手势被中断时也要回弹
+        resetSlide();
+      },
+      onPanResponderTerminationRequest: () => {
+        // 允许手势被中断
+        return true;
+      },
+    })
+  ).current;
+
+  // 滑动动画效果
+  const slideStyle = useMemo(() => {
+    const scale = slideOffset.interpolate({
+      inputRange: [-maxSlide, 0, maxSlide],
+      outputRange: [0.95, 1, 0.95],
+    });
+    const opacity = slideOffset.interpolate({
+      inputRange: [-maxSlide, -maxSlide * 0.5, 0, maxSlide * 0.5, maxSlide],
+      outputRange: [0.9, 0.95, 1, 0.95, 0.9],
+    });
+    return {
+      transform: [
+        { translateY: slideOffset },
+        { scale },
+      ],
+      opacity,
+    };
+  }, [slideOffset, maxSlide]);
 
   const onPageSelected = ({ nativeEvent }: PagerViewOnPageSelectedEvent) => {
     setPageIndex(nativeEvent.position)
@@ -78,7 +165,10 @@ export default memo(({ componentId }: { componentId: string }) => {
   return (
     <>
       <Header />
-      <View style={styles.container}>
+      <View 
+        style={styles.container} 
+        {...panResponder.panHandlers}
+      >
         <PagerView
           onPageSelected={onPageSelected}
           // onPageScrollStateChanged={onPageScrollStateChanged}
@@ -86,13 +176,19 @@ export default memo(({ componentId }: { componentId: string }) => {
           ref={pagerViewRef}
         >
           <View collapsable={false}>
-            <View collapsable={false} style={styles.picPageContainer}>
+            <Animated.View collapsable={false} style={[styles.picPageContainer, slideStyle]}>
               <Pic componentId={componentId} />
               <MiniLyric
                 onPress={handleSwitchToLyricPage}
                 style={styles.miniLyricContainer}
               />
-            </View>
+              {/* 滑动提示 */}
+              {slideHintVisible && (
+                <Animated.Text style={[styles.slideHint]}>
+                  {slideHintText}
+                </Animated.Text>
+              )}
+            </Animated.View>
           </View>
           <View collapsable={false}>
             <LyricPage activeIndex={pageIndex} />
@@ -127,6 +223,19 @@ const styles = createStyle({
     left: '10%',
     right: '10%',
     alignItems: 'flex-start',
+  },
+  slideHint: {
+    position: 'absolute',
+    top: '5%',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   // pageIndicator: {
   //   flex: 0,
