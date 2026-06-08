@@ -1,4 +1,8 @@
 import TrackPlayer, { State as TPState, Event as TPEvent } from 'react-native-track-player'
+import { getMusicUrl, clearMusicUrl, getAllKeys, storageDataPrefix } from '@/utils/data'
+import { setMusicUrl } from '@/core/player/player'
+import playerState from '@/store/player/state'
+import { log } from '@/utils/log'
 // import { store } from '@/store'
 // import { action as playerAction, STATUS } from '@/store/modules/player'
 import { isTempId, isEmpty } from './utils'
@@ -107,7 +111,42 @@ const registerPlaybackService = async () => {
     log.error('[Player] ====== Playback Error ======')
     log.error('[Player] Error type:', typeof err)
     log.error('[Player] Error:', JSON.stringify(err, null, 2))
-    
+
+    try {
+      const currentMusicInfo = playerState.playMusicInfo.musicInfo
+      if (currentMusicInfo) {
+        log.info('[Player] Clearing music URL cache for:', currentMusicInfo.name, currentMusicInfo.id)
+        // 获取所有缓存键
+        const allKeys = await getAllKeys()
+        const prefix = storageDataPrefix.musicUrl
+        const musicId = currentMusicInfo.id
+        // 找到该音乐的所有音质缓存
+        const cacheKeys = allKeys.filter(key => key.startsWith(prefix + musicId))
+        if (cacheKeys.length > 0) {
+          log.info('[Player] Found cached keys:', cacheKeys)
+          await clearMusicUrl(cacheKeys)
+          log.info('[Player] Music URL cache cleared successfully')
+        } else {
+          log.info('[Player] No cached URL found for this music')
+        }
+
+        // 尝试重新获取播放地址
+        global.lx.playerError = true
+        log.info('[Player] Attempting to re-fetch music URL')
+        if (currentMusicInfo) {
+          // 等待一段时间再重试，避免立即重试
+          setTimeout(() => {
+            log.info('[Player] Re-fetching music URL...')
+            setMusicUrl(currentMusicInfo, true) // true 表示刷新缓存
+          }, 1000)
+        }
+      } else {
+        log.warn('[Player] No current music info available')
+      }
+    } catch (clearErr) {
+      log.error('[Player] Failed to clear cache:', clearErr)
+    }
+
     // 尝试获取当前播放的 track 信息
     try {
       const currentTrack = await TrackPlayer.getCurrentTrack()
@@ -120,14 +159,14 @@ const registerPlaybackService = async () => {
     } catch (e) {
       log.error('[Player] Failed to get track info:', e)
     }
-    
+
     // 详细记录错误对象的所有属性
     if (err) {
       Object.keys(err).forEach(key => {
         log.error(`[Player] Error.${key}:`, err[key])
       })
     }
-    
+
     log.error('[Player] =============================')
     global.app_event.error()
     global.app_event.playerError()

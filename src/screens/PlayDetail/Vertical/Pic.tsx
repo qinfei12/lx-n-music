@@ -28,6 +28,7 @@ export default memo(({ componentId }: { componentId: string }) => {
   const coverRef = useRef<View>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const shouldForceLayerComposition = Platform.OS === 'android' && global.lx.isCarMode && isCoverSpin;
+  const isUnmounted = useRef(false);
 
   const createAnimation = useCallback((value: number) => {
     return Animated.timing(spinValue, {
@@ -39,12 +40,13 @@ export default memo(({ componentId }: { componentId: string }) => {
   }, [spinValue]);
 
   const startAnimation = useCallback(() => {
-    if (isAnimating.current || !isCoverSpin) return;
+    if (isAnimating.current || !isCoverSpin || isUnmounted.current) return;
     isAnimating.current = true;
     spinValue.stopAnimation(value => {
+      if (isUnmounted.current) return;
       animationRef.current = createAnimation(value);
       animationRef.current.start(({ finished }) => {
-        if (finished && isAnimating.current) {
+        if (finished && isAnimating.current && !isUnmounted.current) {
           spinValue.setValue(0);
           isAnimating.current = false;
           startAnimation();
@@ -81,6 +83,13 @@ export default memo(({ componentId }: { componentId: string }) => {
       startAnimation();
     }
   }, [musicInfo.musicInfo?.id, isCoverSpin, startAnimation, stopAnimation, spinValue]);
+
+  useEffect(() => {
+    return () => {
+      isUnmounted.current = true;
+      stopAnimation();
+    };
+  }, [stopAnimation]);
 
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
