@@ -19,6 +19,7 @@ import {
   handleShowAlbumDetail,
   handleLikeMusic,
 } from './listAction'
+import { handleClearMusicCache } from '@/screens/Home/Views/Mylist/MusicList/listAction'
 import MusicDownloadModal, {
   type MusicDownloadModalType,
 } from '@/screens/Home/Views/Mylist/MusicList/MusicDownloadModal'
@@ -271,6 +272,9 @@ export default forwardRef<OnlineListType, OnlineListProps>(
             handleLikeMusic(info.musicInfo)
           }}
           onPlayMv={handlePlayMv}
+          onClearCache={(info) => {
+            void handleClearMusicCache(info.musicInfo)
+          }}
         />
         <SimilarSongsModal ref={similarSongsModalRef} />
         {}

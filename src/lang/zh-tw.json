@@ -343,6 +343,7 @@
   "setting_list_auto_save_daily_rec": "自動儲存每日推薦歌單",
   "setting_list_auto_save_daily_rec_tip": "開啟後，每日首次進入「每日推薦」時，若當天還未儲存過，將自動建立一個以日期命名的歌單（如「08_15_daily」）。最多會保留最近15天的歌單。",
   "download": "下載",
+  "clear_music_cache": "清除緩存",
   "setting_download": "下載設定",
   "setting_download_enable": "啟用下載功能",
   "setting_download_enabled_tip": "下載功能已啟用",

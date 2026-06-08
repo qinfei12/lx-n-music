@@ -2,6 +2,8 @@ import musicSdk from '@/utils/musicSdk'
 import RNFetchBlob from 'rn-fetch-blob'
 import playerState from '@/store/player/state'
 import settingState from '@/store/setting/state'
+import { setMusicUrl, stop } from '@/core/player/player'
+import { log } from '@/utils/log'
 
 import { removeListMusics, updateListMusicPosition, updateListMusics } from '@/core/list'
 import { playList, playNext } from '@/core/player/player'
@@ -22,6 +24,8 @@ import { requestStoragePermission } from '@/utils/tools'
 import { getMusicUrl, getLyricInfo, getPicUrl } from '@/core/music/online'
 import { writeMetadata, writePic, writeLyric } from '@/utils/localMediaMetadata'
 import { downloadFile, writeFile } from '@/utils/fs'
+import { clearMusicUrl } from '@/utils/data'
+import { storageDataPrefix } from '@/config/constant'
 import {MusicMetadata} from "react-native-local-media-metadata";
 export const handlePlay = (listId: SelectInfo['listId'], index: SelectInfo['index']) => {
   void playList(listId, index)
@@ -370,5 +374,54 @@ export const handleDownload = async (musicInfo: LX.Music.MusicInfo, quality: LX.
   } catch (e) {
     console.log(e)
     return await Promise.reject(e ?? '权限获取失败')
+  }
+}
+
+export const handleClearMusicCache = async (musicInfo: LX.Music.MusicInfo) => {
+  const musicName = musicInfo.name
+  const musicId = musicInfo.id
+  
+  log.info(`[清除缓存] 开始清除歌曲缓存 - 歌曲名: ${musicName}, ID: ${musicId}`)
+  
+  try {
+    const keys = [
+      `${storageDataPrefix.musicUrl}${musicId}_high`,
+      `${storageDataPrefix.musicUrl}${musicId}_standard`,
+      `${storageDataPrefix.musicUrl}${musicId}_low`,
+      `${storageDataPrefix.musicUrl}${musicId}_unknown`,
+    ]
+    
+    log.info(`[清除缓存] 待清除的缓存键: ${JSON.stringify(keys)}`)
+    
+    await clearMusicUrl(keys)
+    log.info(`[清除缓存] URL缓存清除成功 - 歌曲名: ${musicName}, ID: ${musicId}`)
+    
+    const isCurrentPlaying = playerState.playMusicInfo.musicInfo?.id === musicId
+    
+    if (isCurrentPlaying) {
+      log.info(`[清除缓存] 歌曲正在播放，准备重新加载 - 歌曲名: ${musicName}`)
+      
+      toast('已清除缓存，正在重新加载...')
+      
+      try {
+        await stop()
+        log.info(`[清除缓存] 已停止当前播放`)
+        
+        setMusicUrl(musicInfo, true)
+        log.info(`[清除缓存] 已触发重新获取URL - 歌曲名: ${musicName}`)
+        
+      } catch (reloadError) {
+        log.error(`[清除缓存] 重新加载失败 - 歌曲名: ${musicName}, 错误:`, reloadError)
+        toast('清除缓存成功，但重新加载失败')
+      }
+      
+    } else {
+      toast(global.i18n.t('setting_other_cache_clear_success_tip'))
+      log.info(`[清除缓存] 清除完成，歌曲未在播放 - 歌曲名: ${musicName}`)
+    }
+    
+  } catch (error) {
+    log.error(`[清除缓存] 清除失败 - 歌曲名: ${musicName}, ID: ${musicId}, 错误:`, error)
+    toast('清除缓存失败')
   }
 }

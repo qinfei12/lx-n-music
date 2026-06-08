@@ -23,6 +23,7 @@ export interface PlayDetailMenuProps {
   onSimilarSongs: (selectInfo: SelectInfo) => void
   onLike: (selectInfo: SelectInfo) => void
   onPlayMv: (selectInfo: SelectInfo) => void
+  onClearCache: (selectInfo: SelectInfo) => void
 }
 
 export interface PlayDetailMenuType {
@@ -82,6 +83,7 @@ export default forwardRef<PlayDetailMenuType, PlayDetailMenuProps>((props, ref) 
     if (musicInfo && musicInfo.source !== 'local') {
      if (menuSetting.songDetail) menuItems.push({ action: 'musicSourceDetail', label: t('music_source_detail') });
     }
+    menuItems.push({ action: 'clearCache', label: t('clear_music_cache') });
 
     return menuItems;
   }, [t, isLiked, selectInfoRef.current.musicInfo, menuSetting]);
@@ -112,6 +114,9 @@ export default forwardRef<PlayDetailMenuType, PlayDetailMenuProps>((props, ref) 
         break;
       case 'musicSourceDetail':
         props.onMusicSourceDetail(selectInfo);
+        break;
+      case 'clearCache':
+        props.onClearCache(selectInfo);
         break;
       default:
         break;

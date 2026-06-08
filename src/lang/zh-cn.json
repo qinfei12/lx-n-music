@@ -343,6 +343,7 @@
   "setting_list_auto_save_daily_rec": "自动保存每日推荐歌单",
   "setting_list_auto_save_daily_rec_tip": "开启后，每日首次进入“每日推荐”时，若当天还未保存过，将自动创建一个以日期命名的歌单（如“08_15_daily”）。最多会保留最近15天的歌单。",
   "download": "下载",
+  "clear_music_cache": "清除缓存",
   "setting_download": "下载设置",
   "setting_download_enable": "启用下载功能",
   "setting_download_enabled_tip": "下载功能已启用",

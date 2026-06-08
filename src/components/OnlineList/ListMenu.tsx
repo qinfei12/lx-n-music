@@ -28,6 +28,7 @@ export interface ListMenuProps {
   onPlayMv: (selectInfo: SelectInfo) => void
   onMove?: (selectInfo: SelectInfo) => void
   onRemove?: (selectInfo: SelectInfo) => void
+  onClearCache?: (selectInfo: SelectInfo) => void
   listId?: string
   isCreator?: boolean
 }
@@ -95,6 +96,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
       remainingMenu.push({ action: 'musicSourceDetail', label: t('music_source_detail') })
     if (menuSetting.dislike)
       remainingMenu.push({ action: 'dislike', label: t('dislike'), disabled: isDislikeMusic })
+    remainingMenu.push({ action: 'clearCache', label: t('clear_music_cache') })
 
     if (props.isCreator) {
       remainingMenu.push({ action: 'remove', label: t('delete') });
@@ -146,6 +148,9 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
         break;
       case 'remove':
         props.onRemove?.(selectInfo);
+        break;
+      case 'clearCache':
+        props.onClearCache?.(selectInfo);
         break;
       default:
         break

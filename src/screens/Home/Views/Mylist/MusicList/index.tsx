@@ -12,6 +12,7 @@ import {
   handleShowMusicSourceDetail,
   handleUpdateMusicInfo,
   handleUpdateMusicPosition,
+  handleClearMusicCache,
 } from './listAction'
 import List, { type ListType } from './List'
 import ListMusicAdd, {
@@ -279,6 +280,9 @@ export default () => {
           similarSongsModalRef.current?.show(info.musicInfo)
         }}
         onPlayMv={handlePlayMv}
+        onClearCache={(info) => {
+          void handleClearMusicCache(info.musicInfo)
+        }}
       />
       <MetadataEditModal ref={metadataEditTypeRef} onUpdate={handleUpdateMetadata} />
       <MusicToggleModal ref={musicToggleModalRef} />

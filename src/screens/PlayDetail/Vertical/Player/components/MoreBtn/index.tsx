@@ -9,7 +9,7 @@ import Btn from './Btn'
 import { type Position } from '@/screens/Home/Views/Mylist/MusicList/ListMenu'
 import PlayDetailMenu, { type PlayDetailMenuType, type SelectInfo } from '@/screens/PlayDetail/components/PlayDetailMenu'
 import playerState from '@/store/player/state'
-import { handleDislikeMusic, handleShare, handleShowMusicSourceDetail } from '@/screens/Home/Views/Mylist/MusicList/listAction'
+import { handleDislikeMusic, handleShare, handleShowMusicSourceDetail, handleClearMusicCache } from '@/screens/Home/Views/Mylist/MusicList/listAction'
 import {handleLikeMusic, handleShowAlbumDetail, handleShowArtistDetail} from '@/components/OnlineList/listAction'
 import MusicAddModal, { type MusicAddModalType } from '@/components/MusicAddModal'
 import MusicDownloadModal, { type MusicDownloadModalType } from '@/screens/Home/Views/Mylist/MusicList/MusicDownloadModal'
@@ -117,6 +117,10 @@ export default memo(({ componentId }: { componentId: string }) => {
     }
   };
 
+  const onClearCache = (info: SelectInfo) => {
+    void handleClearMusicCache(info.musicInfo);
+  };
+
   return (
     <>
       <View style={styles.container}>
@@ -139,6 +143,7 @@ export default memo(({ componentId }: { componentId: string }) => {
         onMusicSourceDetail={onMusicSourceDetail}
         onDislikeMusic={onDislikeMusic}
         onPlayMv={onPlayMv}
+        onClearCache={onClearCache}
       />
       <MusicAddModal ref={musicAddModalRef} />
       {settingState.setting['download.enable'] && <MusicDownloadModal ref={musicDownloadModalRef} onDownloadInfo={() => {}} />}

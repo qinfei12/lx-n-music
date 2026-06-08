@@ -31,6 +31,7 @@ export interface ListMenuProps {
   onDislikeMusic: (selectInfo: SelectInfo) => void
   onRemove: (selectInfo: SelectInfo) => void
   onPlayMv: (selectInfo: SelectInfo) => void
+  onClearCache: (selectInfo: SelectInfo) => void
 }
 export interface ListMenuType {
   show: (selectInfo: SelectInfo, position: Position) => void
@@ -113,6 +114,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       }
 
       if (menuSetting.dislike) menu.push({ action: 'dislike', disabled: hasDislike(musicInfo), label: t('dislike') })
+      menu.push({ action: 'clearCache', label: t('clear_music_cache') })
       menu.push({ action: 'remove', label: t('delete') })
 
       if (musicInfo.source == 'local') {
@@ -145,6 +147,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       case 'albumDetail': props.onAlbumDetail(info); break
       case 'similarSongs': props.onSimilarSongs(info); break
       case 'dislike': props.onDislikeMusic(info); break
+      case 'clearCache': props.onClearCache(info); break
       case 'musicSourceDetail': props.onMusicSourceDetail(info); break
       case 'remove': props.onRemove(info); break
       case 'playMv': props.onPlayMv(info); break
