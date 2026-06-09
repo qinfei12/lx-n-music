@@ -44,7 +44,11 @@ const FixedListItem = memo(({
   index: number
   activeId: string
   onPress: (item: LX.List.MyListInfo) => void
-  onShowMenu: (item: LX.List.MyListInfo, index: number) => void
+  onShowMenu: (
+    item: LX.List.MyListInfo,
+    index: number,
+    position: { x: number; y: number; w: number; h: number }
+  ) => void
 }) => {
   const theme = useTheme()
   const fetching = useListFetching(item.id)
@@ -52,7 +56,16 @@ const FixedListItem = memo(({
   const active = activeId == item.id
 
   const handleShowMenu = () => {
-    onShowMenu(item, index)
+    if (moreButtonRef.current?.measure) {
+      moreButtonRef.current.measure((fx, fy, width, height, px, py) => {
+        onShowMenu(item, index, {
+          x: Math.ceil(px),
+          y: Math.ceil(py),
+          w: Math.ceil(width),
+          h: Math.ceil(height),
+        })
+      })
+    }
   }
 
   return (

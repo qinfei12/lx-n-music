@@ -97,6 +97,10 @@ const Menu = ({
   }, [menuSize, width, height])
 
   const menuStyle = useMemo(() => {
+    if (!buttonPosition || buttonPosition.y === undefined) {
+      return { height: 0, width: 0, top: 0 }
+    }
+
     let menuHeight = menus.length * menuItemStyle.height
     const topHeight = buttonPosition.y - 20
     const bottomHeight = windowSize.height - buttonPosition.y - buttonPosition.h - 20
@@ -107,7 +111,7 @@ const Menu = ({
     const bottomSpace = windowSize.height - buttonPosition.y - buttonPosition.h - 20
     const rightSpace = windowSize.width - buttonPosition.x - menuWidth
     const showInBottom = bottomSpace >= menuHeight
-    const showInRight = rightSpace >= menuWidth
+    const showInRight = rightSpace >= 0
     const frameStyle: {
       height: number
       width: number
@@ -231,15 +235,19 @@ const Component = <M extends Menus>(
   // console.log(visible)
   const modalRef = useRef<ModalType>(null)
   const [position, setPosition] = useState<Position>({ w: 0, h: 0, x: 0, y: 0 })
+  const positionRef = useRef<Position>({ w: 0, h: 0, x: 0, y: 0 })
   const [menuSize, setMenuSize] = useState<MenuSize>({})
   const hide = () => {
     modalRef.current?.setVisible(false)
   }
   useImperativeHandle(ref, () => ({
     show(newPosition, menuSize) {
+      positionRef.current = newPosition
       setPosition(newPosition)
       if (menuSize) setMenuSize(menuSize)
-      modalRef.current?.setVisible(true)
+      requestAnimationFrame(() => {
+        modalRef.current?.setVisible(true)
+      })
     },
     hide() {
       hide()
