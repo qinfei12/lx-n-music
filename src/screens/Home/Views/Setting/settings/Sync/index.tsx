@@ -159,7 +159,6 @@ export default memo(() => {
             value={webdavPassword}
             onChanged={handleWebdavSettingChanged('sync.webdav.password')}
             placeholder="请输入密码"
-            secureTextEntry
             editable={isEnableWebdav}
           />
           <InputItem

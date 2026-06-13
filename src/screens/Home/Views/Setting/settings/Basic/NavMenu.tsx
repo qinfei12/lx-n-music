@@ -284,6 +284,7 @@ export default memo(() => {
   const animateLayout = useCallback((from: number, to: number) => {
     const heights = heightsRef.current;
     const draggedHeight = heights[from] ?? 0;
+    if (draggedHeight <= 0) return;
     for (let i = 0; i < animsRef.current.length; i++) {
       if (i === from) continue;
       const anim = animsRef.current[i];
@@ -345,12 +346,13 @@ export default memo(() => {
     draggingIndexRef.current = null;
     targetIndexRef.current = null;
     lastTargetRef.current = null;
-    setDraggingIndex(null);
     if (from == null) return;
-    resetAllAnims();
-    if (to != null && to !== from) {
+    const needsReorder = to != null && to !== from;
+    if (needsReorder) {
       persistReorder(from, to);
     }
+    setTimeout(resetAllAnims, 100);
+    setDraggingIndex(null);
   }, [persistReorder, resetAllAnims]);
 
   const handleDragCancel = useCallback(() => {
