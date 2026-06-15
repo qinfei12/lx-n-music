@@ -30,10 +30,8 @@ jobs:
           cd android
           # Remove local JDK path for GitHub Actions (use JAVA_HOME set by actions/setup-java)
           sed -i '/^org.gradle.java.home=/d' gradle.properties
-          //echo ${{ secrets.MYAPP_KEYSTORE_BASE64 }} | base64 --decode > app/${{ secrets.MYAPP_UPLOAD_STORE_FILE }}
           chmod +x ./gradlew
           ./gradlew assembleDebug
-          //rm -f app/${{ secrets.MYAPP_UPLOAD_STORE_FILE }}
 
       - name: Get package version
         id: package_version
